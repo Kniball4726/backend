@@ -32,9 +32,11 @@ export class DatabaseModule implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     const autoProvision =
       this.configService.get<string>('DB_AUTO_PROVISION', 'true') === 'true';
+    const autoSeed =
+      this.configService.get<string>('DB_AUTO_SEED', 'false') === 'true';
 
     if (autoProvision && this.connection.db) {
-      await provisionMongoDatabase(this.connection.db, { runSeed: false });
+      await provisionMongoDatabase(this.connection.db, { runSeed: autoSeed });
     } else {
       this.logger.log('Conexión a MongoDB Atlas establecida.');
     }
