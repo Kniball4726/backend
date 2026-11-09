@@ -48,8 +48,15 @@ export class ProductsService {
     return created.toObject();
   }
 
-  async findAllProducts(categoryId?: string, search?: string) {
-    const filter: Record<string, unknown> = { isActive: true };
+  async findAllProducts(
+    categoryId?: string,
+    search?: string,
+    includeInactive = false,
+  ) {
+    const filter: Record<string, unknown> = {};
+    if (!includeInactive) {
+      filter.isActive = true;
+    }
 
     if (categoryId && Types.ObjectId.isValid(categoryId)) {
       filter.categoryId = new Types.ObjectId(categoryId);
@@ -121,6 +128,9 @@ export class ProductsService {
       }
       updatePayload.categoryId = new Types.ObjectId(dto.categoryId);
     }
+    if (dto.priceCents !== undefined) {
+      updatePayload.price = dto.priceCents;
+    }
 
     const updated = await this.productModel
       .findByIdAndUpdate(id, { $set: updatePayload }, { new: true })
@@ -130,5 +140,24 @@ export class ProductsService {
       throw new NotFoundException('Producto no encontrado');
     }
     return updated;
+  }
+
+  async deleteProduct(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('ID de producto inválido');
+    }
+
+    const updated = await this.productModel
+      .findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true })
+      .lean();
+
+    if (!updated) {
+      throw new NotFoundException('Producto no encontrado');
+    }
+
+    return {
+      success: true,
+      message: `Producto "${updated.name}" desactivado correctamente`,
+    };
   }
 }

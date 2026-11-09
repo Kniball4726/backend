@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -74,11 +75,24 @@ export class CatalogController {
   @ApiOperation({ summary: 'Buscar o listar productos activos para el POS' })
   @ApiQuery({ name: 'categoryId', required: false })
   @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Incluir productos desactivados [Para gestión ADMIN]',
+  })
   findAllProducts(
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
+    @Query('includeInactive') includeInactive?: string,
   ) {
-    return this.catalogService.findAllProducts(categoryId, search);
+    const shouldInclude =
+      includeInactive === 'true' || includeInactive === '1';
+    return this.catalogService.findAllProducts(
+      categoryId,
+      search,
+      shouldInclude,
+    );
   }
 
   @Get('products/barcode/:barcode')
@@ -93,8 +107,19 @@ export class CatalogController {
 
   @Patch('products/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Actualizar datos o precio de un producto [Solo ADMIN]' })
+  @ApiOperation({
+    summary: 'Actualizar datos o precio de un producto [Solo ADMIN/MASTER]',
+  })
   updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.catalogService.updateProduct(id, dto);
+  }
+
+  @Delete('products/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Desactivar o dar de baja producto [Solo ADMIN/MASTER]',
+  })
+  deleteProduct(@Param('id') id: string) {
+    return this.catalogService.deleteProduct(id);
   }
 }

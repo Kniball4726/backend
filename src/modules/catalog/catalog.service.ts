@@ -28,8 +28,16 @@ export class CatalogService {
     return this.productsService.createProduct(dto);
   }
 
-  findAllProducts(categoryId?: string, search?: string) {
-    return this.productsService.findAllProducts(categoryId, search);
+  findAllProducts(
+    categoryId?: string,
+    search?: string,
+    includeInactive = false,
+  ) {
+    return this.productsService.findAllProducts(
+      categoryId,
+      search,
+      includeInactive,
+    );
   }
 
   findByBarcode(barcode: string) {
@@ -38,6 +46,10 @@ export class CatalogService {
 
   updateProduct(id: string, dto: UpdateProductDto) {
     return this.productsService.updateProduct(id, dto);
+  }
+
+  deleteProduct(id: string) {
+    return this.productsService.deleteProduct(id);
   }
 
   syncCatalogDelta(updatedSince?: string) {

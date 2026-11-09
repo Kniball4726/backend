@@ -39,6 +39,11 @@ export class CreateProductDto extends createZodDto(CreateProductSchema) {}
 
 export const UpdateProductSchema = CreateProductSchema.omit({
   initialStock: true,
-}).partial();
+})
+  .extend({
+    isActive: z.boolean().optional(),
+    stock: z.number().min(0).optional(),
+  })
+  .partial();
 
 export class UpdateProductDto extends createZodDto(UpdateProductSchema) {}
