@@ -58,17 +58,22 @@ export class UsersService {
     };
   }
 
-  async assignBranch(userId: string, branch: BranchName): Promise<UserSummary> {
+  async assignBranch(
+    userId: string,
+    branch: BranchName,
+    requesterRole?: UserRole,
+  ): Promise<UserSummary> {
     if (!Types.ObjectId.isValid(userId)) {
       throw new NotFoundException('ID de usuario inválido');
     }
 
+    const filter: Record<string, unknown> = { _id: userId };
+    if (requesterRole !== UserRole.MASTER) {
+      filter.role = { $ne: UserRole.MASTER };
+    }
+
     const updated = await this.userModel
-      .findByIdAndUpdate(
-        userId,
-        { $set: { branch } },
-        { new: true },
-      )
+      .findOneAndUpdate(filter, { $set: { branch } }, { new: true })
       .select('-passwordHash -refreshTokenHash')
       .lean();
 
@@ -82,9 +87,14 @@ export class UsersService {
     };
   }
 
-  async findAll(): Promise<UserSummary[]> {
+  async findAll(requesterRole?: UserRole): Promise<UserSummary[]> {
+    const filter =
+      requesterRole === UserRole.MASTER
+        ? {}
+        : { role: { $ne: UserRole.MASTER } };
+
     const users = await this.userModel
-      .find()
+      .find(filter)
       .select('-passwordHash -refreshTokenHash')
       .sort({ createdAt: -1 })
       .lean();

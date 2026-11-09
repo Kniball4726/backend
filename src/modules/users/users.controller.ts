@@ -8,8 +8,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/role.enum';
+import { AuthenticatedUser, UserRole } from '../../common/enums/role.enum';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AssignUserBranchDto, CreateUserDto } from './dto/user.dto';
@@ -41,8 +42,9 @@ export class UsersController {
   assignBranch(
     @Param('id') id: string,
     @Body() dto: AssignUserBranchDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<UserSummary> {
-    return this.usersService.assignBranch(id, dto.branch);
+    return this.usersService.assignBranch(id, dto.branch, user?.role);
   }
 
   @Get()
@@ -50,7 +52,7 @@ export class UsersController {
   @ApiOperation({
     summary: 'Listar usuarios registrados y su sucursal asignada [Solo ADMIN/MASTER]',
   })
-  findAll(): Promise<UserSummary[]> {
-    return this.usersService.findAll();
+  findAll(@CurrentUser() user: AuthenticatedUser): Promise<UserSummary[]> {
+    return this.usersService.findAll(user?.role);
   }
 }
