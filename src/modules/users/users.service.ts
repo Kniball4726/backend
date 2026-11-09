@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -26,7 +27,13 @@ export class UsersService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto, requesterRole?: UserRole) {
+    if (dto.role === UserRole.ADMIN && requesterRole !== UserRole.MASTER) {
+      throw new ForbiddenException(
+        'Solo el usuario MASTER puede crear usuarios con rol ADMIN',
+      );
+    }
+
     const existing = await this.userModel
       .findOne({ email: dto.email.toLowerCase() })
       .lean();
@@ -69,7 +76,7 @@ export class UsersService {
 
     const filter: Record<string, unknown> = { _id: userId };
     if (requesterRole !== UserRole.MASTER) {
-      filter.role = { $ne: UserRole.MASTER };
+      filter.role = { $in: [UserRole.CRM, UserRole.CASHIER] };
     }
 
     const updated = await this.userModel
@@ -91,7 +98,7 @@ export class UsersService {
     const filter =
       requesterRole === UserRole.MASTER
         ? {}
-        : { role: { $ne: UserRole.MASTER } };
+        : { role: { $in: [UserRole.CRM, UserRole.CASHIER] } };
 
     const users = await this.userModel
       .find(filter)

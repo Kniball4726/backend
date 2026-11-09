@@ -27,10 +27,13 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary:
-      'Crear un nuevo usuario (ADMIN, CRM o CASHIER) asignándole sucursal (LOCALES o CARRERAS) [Solo ADMIN/MASTER]',
+      'Crear un nuevo usuario (ADMIN solo por MASTER; CRM o CASHIER por ADMIN/MASTER) asignándole sucursal (LOCALES o CARRERAS)',
   })
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  create(
+    @Body() dto: CreateUserDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usersService.create(dto, user?.role);
   }
 
   @Patch(':id/branch')
