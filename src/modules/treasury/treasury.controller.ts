@@ -33,7 +33,7 @@ export class TreasuryController {
   constructor(private readonly treasuryService: TreasuryService) {}
 
   @Get('registers')
-  @Roles(UserRole.CASHIER, UserRole.CRM, UserRole.ADMIN)
+  @Roles(UserRole.CASHIER, UserRole.ADMIN)
   @ApiOperation({
     summary:
       'Listar cajas: cada CASHIER ve solo sus propias cajas; ADMIN y MASTER ven todas o filtran por vendedor',
@@ -81,7 +81,7 @@ export class TreasuryController {
   }
 
   @Get('operations')
-  @Roles(UserRole.CASHIER, UserRole.CRM, UserRole.ADMIN)
+  @Roles(UserRole.CASHIER, UserRole.ADMIN)
   @ApiOperation({
     summary:
       'Listar operaciones y gastos: cada CASHIER ve solo sus propios movimientos; ADMIN/MASTER ven todos',
