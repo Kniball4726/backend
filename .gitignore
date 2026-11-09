@@ -1,0 +1,32 @@
+# 1. Dependencias (pesadas, se reinstalan con npm ci / npm install)
+node_modules/
+
+# 2. Compilados y cachés de TypeScript / NestJS
+dist/
+build/
+*.tsbuildinfo
+
+# 3. Variables de entorno y secretos (¡Nunca subir a GitHub!)
+.env
+.env.*
+!.env.example
+
+# 4. Reportes de cobertura de pruebas (Jest)
+coverage/
+.nyc_output/
+
+# 5. Logs de ejecución y depuración
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# 6. Archivos temporales de Sistema Operativo e IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo

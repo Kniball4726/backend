@@ -1,0 +1,224 @@
+{
+  "info": {
+    "name": "JustiMobile POS + CRM API (v1)",
+    "description": "Colección oficial para pruebas en Postman, clientes Python y clientes JS.\n\n- Al ejecutar `Auth -> Login`, el script de test guarda automáticamente `accessToken`, `refreshToken` y `userId` en las variables de colección.\n- Para probar acceso por API Key externa, asigna la variable `apiKey` (ej. `jmk_live_...`) y usa el header `X-API-Key: {{apiKey}}`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "apiKey", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Health & Conectividad",
+      "item": [
+        {
+          "name": "Heartbeat (GET /health)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Auth (Login, Refresh, Perfil)",
+      "item": [
+        {
+          "name": "Login (Guarda Token Automáticamente)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const res = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', res.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', res.refreshToken);",
+                  "  if (res.user && res.user.id) pm.collectionVariables.set('userId', res.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"glrd4726ml@gmail.com\",\n  \"password\": \"caracas17130989\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Mi Perfil (GET /auth/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Catalog (Sincronización Delta y Escáner)",
+      "item": [
+        {
+          "name": "Sincronización Delta (GET /catalog/sync)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/catalog/sync"
+          }
+        },
+        {
+          "name": "Buscar por Código de Barras o SKU (GET /catalog/products/barcode/:code)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/catalog/products/barcode/2537"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. CRM (Clientes y Descuento de 1 Uso)",
+      "item": [
+        {
+          "name": "Registrar Cliente con Descuento % (POST /crm/customers)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Martín Palermo\",\n  \"email\": \"martin@cliente.com\",\n  \"discountPercentage\": 15\n}"
+            },
+            "url": "{{baseUrl}}/crm/customers"
+          }
+        },
+        {
+          "name": "Buscar Clientes en Caja (GET /crm/customers/search)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/crm/customers/search?q=&onlyWithDiscount=false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Sales / POS (Cotización, Cobro ACID y Anulación)",
+      "item": [
+        {
+          "name": "Cotizar Carrito (POST /sales/preview)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"productId\": \"REEMPLAZAR_OBJECT_ID_PRODUCTO\", \"quantity\": 2 }\n  ],\n  \"customerId\": null,\n  \"applyCustomerDiscount\": false\n}"
+            },
+            "url": "{{baseUrl}}/sales/preview"
+          }
+        },
+        {
+          "name": "Cobrar Venta POS ACID (POST /sales)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "postman-{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"productId\": \"REEMPLAZAR_OBJECT_ID_PRODUCTO\", \"quantity\": 1 }\n  ],\n  \"customerId\": null,\n  \"applyCustomerDiscount\": false,\n  \"payments\": [\n    { \"method\": \"CASH\", \"amountCents\": 500000, \"reference\": \"EFECTIVO\" }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/sales"
+          }
+        },
+        {
+          "name": "Listar Ventas (GET /sales)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/sales?limit=50"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Treasury / Tesorería (Cajas y Gastos por Vendedor)",
+      "item": [
+        {
+          "name": "Listar Cajas (GET /treasury/registers)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/treasury/registers?branch=PASTEUR"
+          }
+        },
+        {
+          "name": "Abrir Caja (POST /treasury/registers/open)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boxType\": \"Ventas Sucursal\",\n  \"branch\": \"PASTEUR\",\n  \"observations\": \"Apertura turno desde Postman/API\"\n}"
+            },
+            "url": "{{baseUrl}}/treasury/registers/open"
+          }
+        },
+        {
+          "name": "Registrar Gasto u Operación (POST /treasury/operations)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"GASTO\",\n  \"amount\": 2500,\n  \"category\": \"Gastos Varios Sucursal\",\n  \"detail\": \"Insumos librería\",\n  \"branch\": \"PASTEUR\"\n}"
+            },
+            "url": "{{baseUrl}}/treasury/operations"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Master Control (API Keys, Settings, Kill-Switch)",
+      "item": [
+        {
+          "name": "Generar X-API-Key para Cliente Python/JS (POST /master/api-keys)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cliente Python / Integración\",\n  \"scopes\": [\"crm:write\", \"catalog:read\", \"sales:write\", \"treasury:write\"],\n  \"expiresInDays\": 365\n}"
+            },
+            "url": "{{baseUrl}}/master/api-keys"
+          }
+        },
+        {
+          "name": "Consultar Configuración Global (GET /master/settings)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/master/settings"
+          }
+        }
+      ]
+    }
+  ]
+}
