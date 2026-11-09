@@ -1,7 +1,7 @@
 import { Global, Logger, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { InjectConnection, MongooseModule } from '@nestjs/mongoose';
-import mongoose, { Connection } from 'mongoose';
+import { Connection } from 'mongoose';
 import { provisionMongoDatabase } from './db-provisioner';
 
 @Global()
@@ -11,7 +11,6 @@ import { provisionMongoDatabase } from './db-provisioner';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        mongoose.set('sanitizeFilter', true);
         return {
           uri: config.getOrThrow<string>('MONGODB_URI'),
           autoIndex: false, // DB-First maneja los índices explícitamente en db-provisioner

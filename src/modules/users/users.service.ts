@@ -74,13 +74,21 @@ export class UsersService {
       throw new NotFoundException('ID de usuario inválido');
     }
 
-    const filter: Record<string, unknown> = { _id: userId };
-    if (requesterRole !== UserRole.MASTER) {
-      filter.role = { $in: [UserRole.CRM, UserRole.CASHIER] };
+    const existing = await this.userModel.findById(userId).lean();
+    if (!existing) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    if (
+      requesterRole !== UserRole.MASTER &&
+      existing.role !== UserRole.CRM &&
+      existing.role !== UserRole.CASHIER
+    ) {
+      throw new NotFoundException('Usuario no encontrado');
     }
 
     const updated = await this.userModel
-      .findOneAndUpdate(filter, { $set: { branch } }, { new: true })
+      .findByIdAndUpdate(userId, { $set: { branch } }, { new: true })
       .select('-passwordHash -refreshTokenHash')
       .lean();
 
@@ -95,17 +103,21 @@ export class UsersService {
   }
 
   async findAll(requesterRole?: UserRole): Promise<UserSummary[]> {
-    const filter =
-      requesterRole === UserRole.MASTER
-        ? {}
-        : { role: { $in: [UserRole.CRM, UserRole.CASHIER] } };
-
     const users = await this.userModel
-      .find(filter)
+      .find()
       .select('-passwordHash -refreshTokenHash')
       .sort({ createdAt: -1 })
       .lean();
-    return users.map((u: any) => ({
+
+    const visibleUsers =
+      requesterRole === UserRole.MASTER
+        ? users
+        : users.filter(
+            (u: any) =>
+              u.role === UserRole.CRM || u.role === UserRole.CASHIER,
+          );
+
+    return visibleUsers.map((u: any) => ({
       ...u,
       branch: u.branch || BranchName.LOCALES,
     }));
