@@ -38,17 +38,17 @@ export class SalesController {
 
   @Post('preview')
   @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.CASHIER, UserRole.ADMIN)
+  @Roles(UserRole.CASHIER)
   @ApiOperation({
     summary:
-      'Cotizar carrito en tiempo real (calcula subtotal, descuento CRM del cliente, impuestos y total antes de cobrar)',
+      'Cotizar carrito en tiempo real (calcula subtotal, descuento CRM del cliente, impuestos y total antes de cobrar) [Solo CASHIER y MASTER]',
   })
   preview(@Body() dto: PreviewSaleDto) {
     return this.salesService.previewSale(dto);
   }
 
   @Post()
-  @Roles(UserRole.CASHIER, UserRole.ADMIN)
+  @Roles(UserRole.CASHIER)
   @ApiHeader({
     name: 'idempotency-key',
     required: false,
@@ -57,7 +57,7 @@ export class SalesController {
   })
   @ApiOperation({
     summary:
-      'Registrar venta en POS con transacción ACID (descuenta stock, suma a la caja propia del vendedor y consume descuento CRM)',
+      'Registrar venta en POS con transacción ACID (descuenta stock, suma a la caja propia del vendedor y consume descuento CRM) [Solo CASHIER y MASTER]',
   })
   create(
     @Body() dto: CreateSaleDto,

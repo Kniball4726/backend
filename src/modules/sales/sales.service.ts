@@ -545,11 +545,54 @@ export class SalesService {
       filter.cashierId = new Types.ObjectId(targetCashierId);
     }
 
-    return this.saleModel
+    const sales = await this.saleModel
       .find(filter)
       .sort({ createdAt: -1 })
       .limit(Math.min(limit, 200))
       .lean();
+
+    if (!this.connection?.db || sales.length === 0) {
+      return sales;
+    }
+
+    const cashierIds = Array.from(
+      new Set(
+        sales
+          .map((s: any) => (s.cashierId ? s.cashierId.toString() : null))
+          .filter(Boolean),
+      ),
+    ).map((id) => new Types.ObjectId(id as string));
+
+    const cashiers =
+      cashierIds.length > 0
+        ? await this.connection.db
+            .collection('users')
+            .find(
+              { _id: { $in: cashierIds } },
+              { projection: { fullName: 1, email: 1, branch: 1, role: 1 } },
+            )
+            .toArray()
+        : [];
+
+    const cashierMap = new Map(
+      cashiers.map((c: any) => [
+        c._id.toString(),
+        {
+          id: c._id.toString(),
+          fullName: c.fullName,
+          email: c.email,
+          branch: c.branch || 'LOCALES',
+          role: c.role,
+        },
+      ]),
+    );
+
+    return sales.map((s: any) => ({
+      ...s,
+      cashierSnapshot: s.cashierId
+        ? cashierMap.get(s.cashierId.toString()) || null
+        : null,
+    }));
   }
 
   async findByReceiptNumber(
