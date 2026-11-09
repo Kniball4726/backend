@@ -55,10 +55,10 @@ export class TreasuryController {
   }
 
   @Post('registers/open')
-  @Roles(UserRole.CASHIER, UserRole.ADMIN)
+  @Roles(UserRole.CASHIER)
   @ApiOperation({
     summary:
-      'Abrir nueva caja propia ("Ventas Sucursal" individual por vendedor o "Caja Consolidada" de sucursal)',
+      'Abrir nueva caja propia ("Ventas Sucursal" individual por vendedor o "Caja Consolidada" de sucursal) [Solo CASHIER y MASTER]',
   })
   openRegister(
     @Body() dto: OpenRegisterDto,
@@ -68,10 +68,10 @@ export class TreasuryController {
   }
 
   @Patch('registers/:id/close')
-  @Roles(UserRole.CASHIER, UserRole.ADMIN)
+  @Roles(UserRole.CASHIER)
   @ApiOperation({
     summary:
-      'Cerrar caja abierta (cada vendedor solo puede cerrar su propia caja; ADMIN/MASTER pueden cerrar cualquiera)',
+      'Cerrar caja abierta (cada vendedor solo puede cerrar su propia caja; MASTER puede cerrar cualquiera) [Solo CASHIER y MASTER]',
   })
   closeRegister(
     @Param('id') id: string,
@@ -84,7 +84,7 @@ export class TreasuryController {
   @Roles(UserRole.CASHIER, UserRole.ADMIN)
   @ApiOperation({
     summary:
-      'Listar operaciones y gastos: cada CASHIER ve solo sus propios movimientos; ADMIN/MASTER ven todos',
+      'Listar operaciones y gastos: cada CASHIER ve solo sus propios movimientos; ADMIN/MASTER ven todos para auditoría',
   })
   @ApiQuery({ name: 'branch', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -101,10 +101,10 @@ export class TreasuryController {
   }
 
   @Post('operations')
-  @Roles(UserRole.CASHIER, UserRole.ADMIN)
+  @Roles(UserRole.CASHIER)
   @ApiOperation({
     summary:
-      'Registrar operación de caja o Nuevo Gasto descontando exclusivamente de la caja abierta del vendedor',
+      'Registrar operación de caja o Nuevo Gasto descontando exclusivamente de la caja abierta del vendedor [Solo CASHIER y MASTER]',
   })
   createOperation(
     @Body() dto: CreateCashOperationDto,
