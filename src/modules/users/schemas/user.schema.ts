@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { UserRole } from '../../../common/enums/role.enum';
+import { BranchName, UserRole } from '../../../common/enums/role.enum';
 import { COLLECTION_NAMES } from '../../../database/json-schemas/collections.json-schema';
 
 export type UserDocument = HydratedDocument<User>;
@@ -27,6 +27,14 @@ export class User {
     default: UserRole.CASHIER,
   })
   role: UserRole;
+
+  @Prop({
+    required: true,
+    type: String,
+    enum: Object.values(BranchName),
+    default: BranchName.LOCALES,
+  })
+  branch: BranchName;
 
   @Prop({ type: String, default: null })
   refreshTokenHash: string | null;

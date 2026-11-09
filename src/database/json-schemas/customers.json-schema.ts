@@ -26,6 +26,10 @@ export const customersJsonSchema: CollectionDefinition = {
           bsonType: 'string',
           description: 'Correo electrónico único del cliente en CRM',
         },
+        branch: {
+          enum: ['LOCALES', 'CARRERAS', null],
+          description: 'Sucursal asignada al operador CRM que registró al cliente',
+        },
         activeDiscount: {
           bsonType: 'object',
           required: ['isAvailable', 'percentage', 'assignedAt'],

@@ -39,6 +39,7 @@ export async function seedUsersAndMasterSettings(
       $set: {
         passwordHash: masterPasswordHash,
         role: 'MASTER',
+        branch: 'LOCALES',
         isActive: true,
         updatedAt: now,
       },
@@ -59,7 +60,7 @@ export async function seedUsersAndMasterSettings(
         isActive: true,
         createdAt: now,
       },
-      $set: { updatedAt: now },
+      $set: { branch: 'LOCALES', updatedAt: now },
     },
     { upsert: true },
   );
@@ -77,7 +78,7 @@ export async function seedUsersAndMasterSettings(
         isActive: true,
         createdAt: now,
       },
-      $set: { updatedAt: now },
+      $set: { branch: 'LOCALES', updatedAt: now },
     },
     { upsert: true },
   );
@@ -95,7 +96,7 @@ export async function seedUsersAndMasterSettings(
         isActive: true,
         createdAt: now,
       },
-      $set: { updatedAt: now },
+      $set: { branch: 'LOCALES', updatedAt: now },
     },
     { upsert: true },
   );
@@ -133,29 +134,40 @@ export async function seedUsersAndMasterSettings(
     '[Seed] Usuarios verificados: glrd4726ml@gmail.com (MASTER), admin@justimobile.com (ADMIN), gregory@justimobile.com (CRM), daniel@justimobile.com (CASHIER)',
   );
 
-  // Semilla de Caja inicial abierta en sucursal PASTEUR si no existe ninguna
+  // Semilla de Caja inicial abierta en sucursal LOCALES si no existe ninguna
   const registersCol = db.collection(COLLECTION_NAMES.CASH_REGISTERS);
+  await registersCol.updateMany(
+    { branch: { $nin: ['LOCALES', 'CARRERAS'] } },
+    { $set: { branch: 'LOCALES' } },
+  );
+  await db
+    .collection(COLLECTION_NAMES.CASH_OPERATIONS)
+    .updateMany(
+      { branch: { $nin: ['LOCALES', 'CARRERAS'] } },
+      { $set: { branch: 'LOCALES' } },
+    );
+
   const existingOpenReg = await registersCol.findOne({
-    branch: 'PASTEUR',
+    branch: 'LOCALES',
     status: 'ABIERTA',
   });
   if (!existingOpenReg) {
     await registersCol.insertOne({
       _id: new ObjectId(),
       userId: crmUserId,
-      userFullName: 'Gregory Rodriguez',
-      branch: 'PASTEUR',
+      userFullName: 'Daniel (Cajero)',
+      branch: 'LOCALES',
       boxType: 'Ventas Sucursal',
       status: 'ABIERTA',
       initialBalanceCents: 0,
       currentBalanceCents: 0,
-      observations: 'Apertura inicial turno PASTEUR',
+      observations: 'Apertura inicial turno LOCALES',
       openedAt: now,
       closedAt: null,
       createdAt: now,
       updatedAt: now,
     });
-    logger.log('[Seed] Caja "Ventas Sucursal" abierta en sucursal PASTEUR.');
+    logger.log('[Seed] Caja "Ventas Sucursal" abierta en sucursal LOCALES.');
   }
 
   return { crmUserId };

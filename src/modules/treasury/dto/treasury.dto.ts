@@ -1,9 +1,13 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { BranchName } from '../../../common/enums/role.enum';
 
 export const OpenRegisterSchema = z.object({
   boxType: z.enum(['Ventas Sucursal', 'Caja Consolidada']),
-  branch: z.string().trim().min(2).max(60).optional().default('PASTEUR'),
+  branch: z
+    .enum([BranchName.LOCALES, BranchName.CARRERAS])
+    .optional()
+    .default(BranchName.LOCALES),
   observations: z.string().trim().max(500).optional().default(''),
 });
 
@@ -19,7 +23,10 @@ export const CreateCashOperationSchema = z.object({
   amount: z.number().positive('El importe debe ser mayor a 0'),
   category: z.string().trim().max(120).optional().nullable(),
   detail: z.string().trim().min(1, 'El detalle es obligatorio').max(500),
-  branch: z.string().trim().min(2).max(60).optional().default('PASTEUR'),
+  branch: z
+    .enum([BranchName.LOCALES, BranchName.CARRERAS])
+    .optional()
+    .default(BranchName.LOCALES),
   registerId: z.string().trim().optional().nullable(),
 });
 

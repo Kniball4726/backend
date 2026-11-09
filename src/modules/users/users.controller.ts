@@ -1,13 +1,21 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/role.enum';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { CreateUserDto } from './dto/user.dto';
-import { UsersService } from './users.service';
+import { AssignUserBranchDto, CreateUserDto } from './dto/user.dto';
+import { UsersService, UserSummary } from './users.service';
 
-@ApiTags('Users (Operadores: ADMIN, CRM, CASHIER)')
+@ApiTags('Users (Operadores: ADMIN, CRM, CASHIER y Asignación de Sucursal LOCALES | CARRERAS)')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
@@ -17,16 +25,32 @@ export class UsersController {
   @Post()
   @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Crear un nuevo usuario (ADMIN, CRM o CASHIER) [Solo ADMIN]',
+    summary:
+      'Crear un nuevo usuario (ADMIN, CRM o CASHIER) asignándole sucursal (LOCALES o CARRERAS) [Solo ADMIN/MASTER]',
   })
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
+  @Patch(':id/branch')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Asignar o cambiar la sucursal (LOCALES o CARRERAS) de un vendedor o usuario CRM [Solo ADMIN/MASTER]',
+  })
+  assignBranch(
+    @Param('id') id: string,
+    @Body() dto: AssignUserBranchDto,
+  ): Promise<UserSummary> {
+    return this.usersService.assignBranch(id, dto.branch);
+  }
+
   @Get()
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Listar usuarios registrados [Solo ADMIN]' })
-  findAll() {
+  @ApiOperation({
+    summary: 'Listar usuarios registrados y su sucursal asignada [Solo ADMIN/MASTER]',
+  })
+  findAll(): Promise<UserSummary[]> {
     return this.usersService.findAll();
   }
 }

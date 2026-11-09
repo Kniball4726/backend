@@ -39,7 +39,11 @@ export class CrmController {
     @Body() dto: CreateOrLoadCustomerDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.crmService.registerCustomerWithDiscount(dto, user.sub);
+    return this.crmService.registerCustomerWithDiscount(
+      dto,
+      user.sub,
+      user.branch || 'LOCALES',
+    );
   }
 
   @Patch(':id/discount')

@@ -7,7 +7,11 @@ import {
 } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { ClientSession, Connection, Types } from 'mongoose';
-import { AuthenticatedUser, UserRole } from '../../common/enums/role.enum';
+import {
+  AuthenticatedUser,
+  BranchName,
+  UserRole,
+} from '../../common/enums/role.enum';
 import { COLLECTION_NAMES } from '../../database/json-schemas/constants';
 import {
   CreateCashOperationDto,
@@ -43,7 +47,7 @@ export class TreasuryService {
       _id: String(doc._id),
       userId: doc.userId ? String(doc.userId) : null,
       userFullName: String(doc.userFullName || 'Operador'),
-      branch: String(doc.branch || 'PASTEUR'),
+      branch: String(doc.branch || BranchName.LOCALES),
       boxType: doc.boxType as 'Ventas Sucursal' | 'Caja Consolidada',
       openedAt: openedDate.toLocaleString('es-AR'),
       openedAtIso: openedDate.toISOString(),
@@ -71,7 +75,7 @@ export class TreasuryService {
       registerId: doc.registerId ? String(doc.registerId) : null,
       userId: doc.userId ? String(doc.userId) : null,
       userFullName: String(doc.userFullName || 'Operador'),
-      branch: String(doc.branch || 'PASTEUR'),
+      branch: String(doc.branch || BranchName.LOCALES),
       type: doc.type as
         | 'INGRESO_EXTRAORDINARIO'
         | 'EGRESO_EXTRAORDINARIO'
@@ -98,7 +102,9 @@ export class TreasuryService {
     targetUserId?: string,
   ) {
     const filter: Record<string, unknown> = {};
-    if (branch && branch.trim()) {
+    if (user.role === UserRole.CASHIER) {
+      filter.branch = user.branch || BranchName.LOCALES;
+    } else if (branch && branch.trim()) {
       filter.branch = branch.trim().toUpperCase();
     }
     if (status) {
@@ -133,7 +139,11 @@ export class TreasuryService {
    *   suma el saldo final de la última caja cerrada de cada vendedor activo en la sucursal.
    */
   async openRegister(dto: OpenRegisterDto, user: AuthenticatedUser) {
-    const branch = (dto.branch || 'PASTEUR').trim().toUpperCase();
+    // Si es CASHIER, la sucursal es estrictamente la asignada por el ADMIN
+    const branch =
+      user.role === UserRole.CASHIER
+        ? user.branch || BranchName.LOCALES
+        : (dto.branch || user.branch || BranchName.LOCALES).trim().toUpperCase();
     const registersCol = this.db.collection(COLLECTION_NAMES.CASH_REGISTERS);
     const userObjId = Types.ObjectId.isValid(user.sub)
       ? new Types.ObjectId(user.sub)
@@ -285,7 +295,9 @@ export class TreasuryService {
     limit = 50,
   ) {
     const filter: Record<string, unknown> = {};
-    if (branch && branch.trim()) {
+    if (user.role === UserRole.CASHIER) {
+      filter.branch = user.branch || BranchName.LOCALES;
+    } else if (branch && branch.trim()) {
       filter.branch = branch.trim().toUpperCase();
     }
 
@@ -309,7 +321,10 @@ export class TreasuryService {
    * Registra una operación de caja o gasto impactando exclusivamente la caja abierta del operador.
    */
   async createOperation(dto: CreateCashOperationDto, user: AuthenticatedUser) {
-    const branch = (dto.branch || 'PASTEUR').trim().toUpperCase();
+    const branch =
+      user.role === UserRole.CASHIER
+        ? user.branch || BranchName.LOCALES
+        : (dto.branch || user.branch || BranchName.LOCALES).trim().toUpperCase();
     const amountCents = Math.round(dto.amount * 100);
     if (amountCents <= 0) {
       throw new BadRequestException('El importe debe ser mayor a 0');
@@ -400,7 +415,7 @@ export class TreasuryService {
   async adjustOpenRegisterBalanceInTransaction(
     deltaCents: number,
     cashierId: string,
-    branch = 'PASTEUR',
+    branch = 'LOCALES',
     session?: ClientSession,
   ): Promise<void> {
     if (!this.connection.db || deltaCents === 0) return;

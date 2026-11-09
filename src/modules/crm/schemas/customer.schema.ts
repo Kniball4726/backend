@@ -68,6 +68,13 @@ export class Customer {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email: string;
 
+  @Prop({
+    type: String,
+    enum: ['LOCALES', 'CARRERAS'],
+    default: 'LOCALES',
+  })
+  branch: 'LOCALES' | 'CARRERAS';
+
   @Prop({ type: ActiveDiscountSchema, required: true })
   activeDiscount: ActiveDiscount;
 

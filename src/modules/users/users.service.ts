@@ -6,8 +6,19 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcryptjs';
 import { Model, Types } from 'mongoose';
+import { BranchName, UserRole } from '../../common/enums/role.enum';
 import { CreateUserDto } from './dto/user.dto';
 import { User, UserDocument } from './schemas/user.schema';
+
+export interface UserSummary {
+  _id: Types.ObjectId | string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  branch: BranchName;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 @Injectable()
 export class UsersService {
@@ -31,6 +42,7 @@ export class UsersService {
       passwordHash,
       fullName: dto.fullName,
       role: dto.role,
+      branch: dto.branch ?? BranchName.LOCALES,
       refreshTokenHash: null,
       isActive: true,
     });
@@ -40,18 +52,46 @@ export class UsersService {
       email: created.email,
       fullName: created.fullName,
       role: created.role,
+      branch: created.branch,
       isActive: created.isActive,
       createdAt: created.createdAt,
     };
   }
 
-  async findAll() {
+  async assignBranch(userId: string, branch: BranchName): Promise<UserSummary> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new NotFoundException('ID de usuario inválido');
+    }
+
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $set: { branch } },
+        { new: true },
+      )
+      .select('-passwordHash -refreshTokenHash')
+      .lean();
+
+    if (!updated) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    return {
+      ...(updated as any),
+      branch: (updated as any).branch || BranchName.LOCALES,
+    };
+  }
+
+  async findAll(): Promise<UserSummary[]> {
     const users = await this.userModel
       .find()
       .select('-passwordHash -refreshTokenHash')
       .sort({ createdAt: -1 })
       .lean();
-    return users;
+    return users.map((u: any) => ({
+      ...u,
+      branch: u.branch || BranchName.LOCALES,
+    }));
   }
 
   async findByEmail(email: string): Promise<UserDocument | null> {

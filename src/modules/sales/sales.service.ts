@@ -160,6 +160,7 @@ export class SalesService {
     dto: CreateSaleDto,
     cashierId: string,
     headerIdempotencyKey?: string,
+    assignedBranch = 'LOCALES',
   ) {
     const idempotencyKey = (
       headerIdempotencyKey ||
@@ -405,7 +406,7 @@ export class SalesService {
         await this.treasuryService?.adjustOpenRegisterBalanceInTransaction(
           totalCents,
           cashierId,
-          'PASTEUR',
+          assignedBranch,
           session,
         );
 
@@ -504,7 +505,7 @@ export class SalesService {
         await this.treasuryService?.adjustOpenRegisterBalanceInTransaction(
           -sale.totalCents,
           sale.cashierId.toString(),
-          'PASTEUR',
+          'LOCALES',
           session,
         );
 

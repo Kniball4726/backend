@@ -7,7 +7,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { AuthenticatedUser } from '../../common/enums/role.enum';
+import {
+  AuthenticatedUser,
+  BranchName,
+} from '../../common/enums/role.enum';
 import { UsersService } from '../users/users.service';
 import { LoginDto, RefreshTokenDto } from './dto/auth.dto';
 
@@ -81,11 +84,13 @@ export class AuthService {
 
     AuthService.failedAttempts.delete(rateKey);
 
+    const branch = user.branch || BranchName.LOCALES;
     const payload: AuthenticatedUser = {
       sub: user._id.toString(),
       email: user.email,
       fullName: user.fullName,
       role: user.role,
+      branch,
     };
 
     const tokens = await this.issueTokens(payload);
@@ -98,6 +103,7 @@ export class AuthService {
         email: payload.email,
         fullName: payload.fullName,
         role: payload.role,
+        branch,
       },
       ...tokens,
     };
@@ -119,6 +125,7 @@ export class AuthService {
       email: user.email,
       fullName: user.fullName,
       role: user.role,
+      branch: user.branch || BranchName.LOCALES,
     };
 
     const tokens = await this.issueTokens(payload);

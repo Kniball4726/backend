@@ -35,6 +35,10 @@ export const usersJsonSchema: CollectionDefinition = {
           enum: ['MASTER', 'ADMIN', 'CRM', 'CASHIER'],
           description: 'Rol RBAC: MASTER, ADMIN, CRM o CASHIER',
         },
+        branch: {
+          enum: ['LOCALES', 'CARRERAS', null],
+          description: 'Sucursal asignada por el ADMIN: LOCALES o CARRERAS',
+        },
         refreshTokenHash: {
           bsonType: ['string', 'null'],
           description: 'Hash del refresh token activo para cliente móvil',

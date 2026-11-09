@@ -5,6 +5,11 @@ export enum UserRole {
   CASHIER = 'CASHIER',
 }
 
+export enum BranchName {
+  LOCALES = 'LOCALES',
+  CARRERAS = 'CARRERAS',
+}
+
 export type ApiKeyScope =
   | '*'
   | 'crm:read'
@@ -23,6 +28,7 @@ export interface AuthenticatedUser {
   email: string;
   fullName: string;
   role: UserRole;
+  branch?: BranchName;
   iat?: number;
   isApiKey?: boolean;
   apiKeyPrefix?: string;

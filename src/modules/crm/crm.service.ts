@@ -45,6 +45,7 @@ export class CrmService {
   async registerCustomerWithDiscount(
     dto: CreateOrLoadCustomerDto,
     crmUserId: string,
+    assignedBranch: 'LOCALES' | 'CARRERAS' = 'LOCALES',
   ) {
     await this.validateMasterCrmRules(dto.discountPercentage);
 
@@ -72,6 +73,7 @@ export class CrmService {
       }
 
       existing.fullName = dto.fullName;
+      existing.branch = assignedBranch;
       existing.activeDiscount = {
         isAvailable: isDiscountAvailable,
         percentage: dto.discountPercentage,
@@ -106,6 +108,7 @@ export class CrmService {
     const created = await this.customerModel.create({
       fullName: dto.fullName,
       email: normalizedEmail,
+      branch: assignedBranch,
       activeDiscount: {
         isAvailable: isDiscountAvailable,
         percentage: dto.discountPercentage,

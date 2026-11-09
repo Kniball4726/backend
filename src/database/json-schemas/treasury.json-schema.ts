@@ -27,9 +27,7 @@ export const cashRegistersJsonSchema: CollectionDefinition = {
           maxLength: 120,
         },
         branch: {
-          bsonType: 'string',
-          minLength: 2,
-          maxLength: 60,
+          enum: ['LOCALES', 'CARRERAS'],
         },
         boxType: {
           enum: ['Ventas Sucursal', 'Caja Consolidada'],
@@ -81,9 +79,7 @@ export const cashOperationsJsonSchema: CollectionDefinition = {
           maxLength: 120,
         },
         branch: {
-          bsonType: 'string',
-          minLength: 2,
-          maxLength: 60,
+          enum: ['LOCALES', 'CARRERAS'],
         },
         type: {
           enum: [

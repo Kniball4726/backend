@@ -64,7 +64,12 @@ export class SalesController {
     @CurrentUser() user: AuthenticatedUser,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.salesService.createSale(dto, user.sub, idempotencyKey);
+    return this.salesService.createSale(
+      dto,
+      user.sub,
+      idempotencyKey,
+      user.branch || 'LOCALES',
+    );
   }
 
   @Post(':id/cancel')
