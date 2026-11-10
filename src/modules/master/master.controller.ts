@@ -61,8 +61,8 @@ export class MasterController {
     summary:
       'Consultar credenciales y estado de integración de Mercado Pago (enmascarado) [Exclusivo MASTER]',
   })
-  getMercadoPagoSettings() {
-    return this.masterService.getMercadoPagoSettings(true);
+  getMercadoPagoSettings(@Query('companyId') companyId?: string) {
+    return this.masterService.getMercadoPagoSettings(true, companyId);
   }
 
   @Patch('integrations/mercadopago')
@@ -73,8 +73,9 @@ export class MasterController {
   updateMercadoPagoSettings(
     @Body() dto: UpdateMercadoPagoSettingsDto,
     @CurrentUser() user: AuthenticatedUser,
+    @Query('companyId') companyId?: string,
   ) {
-    return this.masterService.updateMercadoPagoSettings(dto, user);
+    return this.masterService.updateMercadoPagoSettings(dto, user, companyId);
   }
 
   @Post('integrations/mercadopago/test-connection')
@@ -86,8 +87,13 @@ export class MasterController {
   testMercadoPagoConnection(
     @CurrentUser() user: AuthenticatedUser,
     @Body('accessToken') tokenOverride?: string,
+    @Query('companyId') companyId?: string,
   ) {
-    return this.masterService.testMercadoPagoConnection(user, tokenOverride);
+    return this.masterService.testMercadoPagoConnection(
+      user,
+      tokenOverride,
+      companyId,
+    );
   }
 
   @Get('integrations/afip')
@@ -95,8 +101,8 @@ export class MasterController {
     summary:
       'Consultar configuración, certificados y estado de facturación electrónica AFIP / ARCA (enmascarado) [Exclusivo MASTER]',
   })
-  getAfipSettings() {
-    return this.masterService.getAfipSettings(true);
+  getAfipSettings(@Query('companyId') companyId?: string) {
+    return this.masterService.getAfipSettings(true, companyId);
   }
 
   @Patch('integrations/afip')
@@ -107,8 +113,9 @@ export class MasterController {
   updateAfipSettings(
     @Body() dto: UpdateAfipSettingsDto,
     @CurrentUser() user: AuthenticatedUser,
+    @Query('companyId') companyId?: string,
   ) {
-    return this.masterService.updateAfipSettings(dto, user);
+    return this.masterService.updateAfipSettings(dto, user, companyId);
   }
 
   @Post('integrations/afip/test-connection')
@@ -120,8 +127,9 @@ export class MasterController {
   testAfipConnection(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto?: TestAfipConnectionDto,
+    @Query('companyId') companyId?: string,
   ) {
-    return this.masterService.testAfipConnection(user, dto);
+    return this.masterService.testAfipConnection(user, dto, companyId);
   }
 
   @Post('api-keys')

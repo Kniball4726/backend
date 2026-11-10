@@ -48,34 +48,51 @@ export class MasterService {
     return this.settingsService.updateSettings(dto, actor);
   }
 
-  getMercadoPagoSettings(maskSecrets = true) {
-    return this.mpMasterService.getSettings(maskSecrets);
+  getMercadoPagoSettings(maskSecrets = true, companyId?: string) {
+    return this.mpMasterService.getSettings(maskSecrets, companyId);
   }
 
   updateMercadoPagoSettings(
     dto: UpdateMercadoPagoSettingsDto,
     actor: AuthenticatedUser,
+    companyId?: string,
   ) {
-    return this.mpMasterService.updateSettings(dto, actor);
+    return this.mpMasterService.updateSettings(dto, actor, companyId);
   }
 
-  testMercadoPagoConnection(actor: AuthenticatedUser, tokenOverride?: string) {
-    return this.mpMasterService.testConnection(actor, tokenOverride);
+  testMercadoPagoConnection(
+    actor: AuthenticatedUser,
+    tokenOverride?: string,
+    companyId?: string,
+  ) {
+    return this.mpMasterService.testConnection(actor, tokenOverride, companyId);
   }
 
-  getAfipSettings(maskSecrets = true) {
-    return this.afipMasterService.getSettings(maskSecrets);
+  getAfipSettings(maskSecrets = true, companyId?: string) {
+    return this.afipMasterService.getSettings(maskSecrets, companyId);
   }
 
-  updateAfipSettings(dto: UpdateAfipSettingsDto, actor: AuthenticatedUser) {
-    return this.afipMasterService.updateSettings(dto, actor);
+  updateAfipSettings(
+    dto: UpdateAfipSettingsDto,
+    actor: AuthenticatedUser,
+    companyId?: string,
+  ) {
+    return this.afipMasterService.updateSettings(dto, actor, companyId);
   }
 
-  testAfipConnection(actor: AuthenticatedUser, dto?: TestAfipConnectionDto) {
-    return this.afipMasterService.testConnection(actor, {
-      cuitOverride: dto?.cuitOverride ?? undefined,
-      isProductionOverride: dto?.isProductionOverride,
-    });
+  testAfipConnection(
+    actor: AuthenticatedUser,
+    dto?: TestAfipConnectionDto,
+    companyId?: string,
+  ) {
+    return this.afipMasterService.testConnection(
+      actor,
+      {
+        cuitOverride: dto?.cuitOverride ?? undefined,
+        isProductionOverride: dto?.isProductionOverride,
+      },
+      companyId,
+    );
   }
 
   revokeAllMobileSessions(actor: AuthenticatedUser) {

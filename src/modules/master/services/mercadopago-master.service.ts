@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
+import { Connection, Types } from 'mongoose';
 import { AuthenticatedUser } from '../../../common/enums/role.enum';
 import { COLLECTION_NAMES } from '../../../database/json-schemas/constants';
 import { UpdateMercadoPagoSettingsDto } from '../dto/master.dto';
@@ -21,6 +21,8 @@ export interface MaskedMercadoPagoResponse {
   hasWebhookSecret: boolean;
   posId: string | null;
   userId: string | null;
+  companyId?: string | null;
+  companyName?: string | null;
   updatedAt: string | null;
 }
 
@@ -50,9 +52,26 @@ export class MercadoPagoMasterService {
     return `${prefix}-****-****-${suffix}`;
   }
 
-  async getSettings(maskSecrets = true): Promise<MaskedMercadoPagoResponse> {
-    const globalSettings = await this.settingsService.getSettings();
-    const mp = globalSettings.mercadoPago;
+  async getSettings(
+    maskSecrets = true,
+    companyId?: string,
+  ): Promise<MaskedMercadoPagoResponse> {
+    let mp: MercadoPagoSettings | null = null;
+    let targetCompany: any = null;
+
+    if (companyId && Types.ObjectId.isValid(companyId)) {
+      targetCompany = await this.db
+        .collection(COLLECTION_NAMES.COMPANIES)
+        .findOne({ _id: new Types.ObjectId(companyId) });
+      if (targetCompany?.mercadoPago) {
+        mp = targetCompany.mercadoPago;
+      }
+    }
+
+    if (!mp) {
+      const globalSettings = await this.settingsService.getSettings();
+      mp = globalSettings.mercadoPago || null;
+    }
 
     if (!mp) {
       return {
@@ -64,6 +83,8 @@ export class MercadoPagoMasterService {
         hasWebhookSecret: false,
         posId: null,
         userId: null,
+        companyId: targetCompany?._id?.toString() || null,
+        companyName: targetCompany?.name || null,
         updatedAt: null,
       };
     }
@@ -81,11 +102,21 @@ export class MercadoPagoMasterService {
       ),
       posId: mp.posId || null,
       userId: mp.userId || null,
+      companyId: targetCompany?._id?.toString() || null,
+      companyName: targetCompany?.name || null,
       updatedAt: mp.updatedAt ? new Date(mp.updatedAt).toISOString() : null,
     };
   }
 
-  async getRawSettings(): Promise<MercadoPagoSettings | null> {
+  async getRawSettings(companyId?: string): Promise<MercadoPagoSettings | null> {
+    if (companyId && Types.ObjectId.isValid(companyId)) {
+      const targetCompany: any = await this.db
+        .collection(COLLECTION_NAMES.COMPANIES)
+        .findOne({ _id: new Types.ObjectId(companyId) });
+      if (targetCompany?.mercadoPago) {
+        return targetCompany.mercadoPago;
+      }
+    }
     const globalSettings = await this.settingsService.getSettings();
     return globalSettings.mercadoPago || null;
   }
@@ -93,10 +124,25 @@ export class MercadoPagoMasterService {
   async updateSettings(
     dto: UpdateMercadoPagoSettingsDto,
     actor: AuthenticatedUser,
+    companyId?: string,
   ): Promise<MaskedMercadoPagoResponse> {
     const now = new Date();
-    const currentSettings = await this.settingsService.getSettings(true);
-    const existingMp = currentSettings.mercadoPago;
+    let existingMp: MercadoPagoSettings | null = null;
+    let targetCompany: any = null;
+
+    if (companyId && Types.ObjectId.isValid(companyId)) {
+      targetCompany = await this.db
+        .collection(COLLECTION_NAMES.COMPANIES)
+        .findOne({ _id: new Types.ObjectId(companyId) });
+      if (targetCompany?.mercadoPago) {
+        existingMp = targetCompany.mercadoPago;
+      }
+    }
+
+    if (!existingMp) {
+      const currentSettings = await this.settingsService.getSettings(true);
+      existingMp = currentSettings.mercadoPago || null;
+    }
 
     let resolvedAccessToken = existingMp?.accessToken || null;
     if (dto.accessToken !== undefined) {
@@ -136,26 +182,49 @@ export class MercadoPagoMasterService {
       updatedAt: now,
     };
 
-    await this.db.collection(COLLECTION_NAMES.SYSTEM_SETTINGS).updateOne(
-      { key: 'GLOBAL_CONFIG' },
-      {
-        $set: {
-          mercadoPago: newMp,
-          updatedAt: now,
+    if (companyId && Types.ObjectId.isValid(companyId)) {
+      await this.db.collection(COLLECTION_NAMES.COMPANIES).updateOne(
+        { _id: new Types.ObjectId(companyId) },
+        {
+          $set: {
+            mercadoPago: newMp,
+            mercadoPagoEnabled: newMp.isEnabled,
+            updatedAt: now,
+          },
         },
-      },
-      { upsert: true },
-    );
-
-    // Invalida la caché de SettingsService para forzar refresco inmediato
-    await this.settingsService.getSettings(true);
+      );
+      if (targetCompany?.isDefault) {
+        await this.db.collection(COLLECTION_NAMES.SYSTEM_SETTINGS).updateOne(
+          { key: 'GLOBAL_CONFIG' },
+          { $set: { mercadoPago: newMp, updatedAt: now } },
+          { upsert: true },
+        );
+        await this.settingsService.getSettings(true);
+      }
+    } else {
+      await this.db.collection(COLLECTION_NAMES.SYSTEM_SETTINGS).updateOne(
+        { key: 'GLOBAL_CONFIG' },
+        {
+          $set: {
+            mercadoPago: newMp,
+            updatedAt: now,
+          },
+        },
+        { upsert: true },
+      );
+      await this.settingsService.getSettings(true);
+    }
 
     await this.auditService.recordAuditLog({
       action: 'MASTER_MERCADOPAGO_SETTINGS_UPDATED',
       actor,
-      targetCollection: COLLECTION_NAMES.SYSTEM_SETTINGS,
-      targetId: 'GLOBAL_CONFIG:mercadoPago',
+      targetCollection: companyId
+        ? COLLECTION_NAMES.COMPANIES
+        : COLLECTION_NAMES.SYSTEM_SETTINGS,
+      targetId: companyId ? `company:${companyId}` : 'GLOBAL_CONFIG:mercadoPago',
       metadata: {
+        companyId: companyId || null,
+        companyName: targetCompany?.name || 'Default Global',
         isEnabled: newMp.isEnabled,
         isSandbox: newMp.isSandbox,
         hasAccessToken: Boolean(newMp.accessToken),
@@ -164,13 +233,17 @@ export class MercadoPagoMasterService {
       },
     });
 
-    return this.getSettings(true);
+    return this.getSettings(true, companyId);
   }
 
-  async testConnection(actor: AuthenticatedUser, tokenOverride?: string) {
+  async testConnection(
+    actor: AuthenticatedUser,
+    tokenOverride?: string,
+    companyId?: string,
+  ) {
     let token = tokenOverride?.trim();
     if (!token || token.includes('****')) {
-      const raw = await this.getRawSettings();
+      const raw = await this.getRawSettings(companyId);
       token = raw?.accessToken || undefined;
     }
 

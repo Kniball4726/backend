@@ -6,7 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
+import { Connection, Types } from 'mongoose';
 import { AuthenticatedUser } from '../../../common/enums/role.enum';
 import { COLLECTION_NAMES } from '../../../database/json-schemas/constants';
 import { cleanCuit, validateCuit as domainValidateCuit } from '../../afip/domain/afip-cuit.validator';
@@ -26,6 +26,8 @@ export interface MaskedAfipResponse {
   privateKeyMasked: string | null;
   defaultConcepto: number;
   defaultCbteTipo: number;
+  companyId?: string | null;
+  companyName?: string | null;
   updatedAt: string | null;
 }
 
@@ -87,15 +89,32 @@ export class AfipMasterService {
     return clean.slice(0, 30) + '...';
   }
 
-  async getSettings(maskSecrets = true): Promise<MaskedAfipResponse> {
-    const globalSettings = await this.settingsService.getSettings();
-    const afip = globalSettings.afip;
+  async getSettings(
+    maskSecrets = true,
+    companyId?: string,
+  ): Promise<MaskedAfipResponse> {
+    let afip: AfipSettings | null = null;
+    let targetCompany: any = null;
+
+    if (companyId && Types.ObjectId.isValid(companyId)) {
+      targetCompany = await this.db
+        .collection(COLLECTION_NAMES.COMPANIES)
+        .findOne({ _id: new Types.ObjectId(companyId) });
+      if (targetCompany?.afip) {
+        afip = targetCompany.afip;
+      }
+    }
+
+    if (!afip) {
+      const globalSettings = await this.settingsService.getSettings();
+      afip = globalSettings.afip || null;
+    }
 
     if (!afip) {
       return {
         isEnabled: false,
         isProduction: false,
-        cuit: null,
+        cuit: targetCompany?.cuit || null,
         puntoVenta: 1,
         hasCert: false,
         certPreview: null,
@@ -103,6 +122,8 @@ export class AfipMasterService {
         privateKeyMasked: null,
         defaultConcepto: 1,
         defaultCbteTipo: 6,
+        companyId: targetCompany?._id?.toString() || null,
+        companyName: targetCompany?.name || null,
         updatedAt: null,
       };
     }
@@ -110,7 +131,7 @@ export class AfipMasterService {
     return {
       isEnabled: Boolean(afip.isEnabled),
       isProduction: Boolean(afip.isProduction),
-      cuit: afip.cuit || null,
+      cuit: afip.cuit || targetCompany?.cuit || null,
       puntoVenta: afip.puntoVenta ?? 1,
       hasCert: Boolean(afip.cert && afip.cert.trim().length > 0),
       certPreview: this.previewCert(afip.cert),
@@ -120,11 +141,21 @@ export class AfipMasterService {
         : afip.privateKey,
       defaultConcepto: afip.defaultConcepto ?? 1,
       defaultCbteTipo: afip.defaultCbteTipo ?? 6,
+      companyId: targetCompany?._id?.toString() || null,
+      companyName: targetCompany?.name || null,
       updatedAt: afip.updatedAt ? new Date(afip.updatedAt).toISOString() : null,
     };
   }
 
-  async getRawSettings(): Promise<AfipSettings | null> {
+  async getRawSettings(companyId?: string): Promise<AfipSettings | null> {
+    if (companyId && Types.ObjectId.isValid(companyId)) {
+      const targetCompany: any = await this.db
+        .collection(COLLECTION_NAMES.COMPANIES)
+        .findOne({ _id: new Types.ObjectId(companyId) });
+      if (targetCompany?.afip) {
+        return targetCompany.afip;
+      }
+    }
     const globalSettings = await this.settingsService.getSettings();
     return globalSettings.afip || null;
   }
@@ -132,10 +163,25 @@ export class AfipMasterService {
   async updateSettings(
     dto: UpdateAfipSettingsDto,
     actor: AuthenticatedUser,
+    companyId?: string,
   ): Promise<MaskedAfipResponse> {
     const now = new Date();
-    const currentSettings = await this.settingsService.getSettings(true);
-    const existingAfip = currentSettings.afip;
+    let existingAfip: AfipSettings | null = null;
+    let targetCompany: any = null;
+
+    if (companyId && Types.ObjectId.isValid(companyId)) {
+      targetCompany = await this.db
+        .collection(COLLECTION_NAMES.COMPANIES)
+        .findOne({ _id: new Types.ObjectId(companyId) });
+      if (targetCompany?.afip) {
+        existingAfip = targetCompany.afip;
+      }
+    }
+
+    if (!existingAfip) {
+      const currentSettings = await this.settingsService.getSettings(true);
+      existingAfip = currentSettings.afip || null;
+    }
 
     // Validación estricta de CUIT si es suministrado
     const cleanCuit = dto.cuit?.trim() ? dto.cuit.replace(/\D/g, '') : null;
@@ -168,7 +214,7 @@ export class AfipMasterService {
     const newAfip: AfipSettings = {
       isEnabled: dto.isEnabled ?? existingAfip?.isEnabled ?? false,
       isProduction: dto.isProduction ?? existingAfip?.isProduction ?? false,
-      cuit: cleanCuit ?? existingAfip?.cuit ?? null,
+      cuit: cleanCuit ?? existingAfip?.cuit ?? targetCompany?.cuit ?? null,
       puntoVenta:
         dto.puntoVenta !== undefined
           ? dto.puntoVenta
@@ -180,26 +226,50 @@ export class AfipMasterService {
       updatedAt: now,
     };
 
-    await this.db.collection(COLLECTION_NAMES.SYSTEM_SETTINGS).updateOne(
-      { key: 'GLOBAL_CONFIG' },
-      {
-        $set: {
-          afip: newAfip,
-          updatedAt: now,
+    if (companyId && Types.ObjectId.isValid(companyId)) {
+      await this.db.collection(COLLECTION_NAMES.COMPANIES).updateOne(
+        { _id: new Types.ObjectId(companyId) },
+        {
+          $set: {
+            afip: newAfip,
+            afipEnabled: newAfip.isEnabled,
+            cuit: newAfip.cuit || targetCompany?.cuit,
+            updatedAt: now,
+          },
         },
-      },
-      { upsert: true },
-    );
-
-    // Invalida caché de SettingsService
-    await this.settingsService.getSettings(true);
+      );
+      if (targetCompany?.isDefault) {
+        await this.db.collection(COLLECTION_NAMES.SYSTEM_SETTINGS).updateOne(
+          { key: 'GLOBAL_CONFIG' },
+          { $set: { afip: newAfip, updatedAt: now } },
+          { upsert: true },
+        );
+        await this.settingsService.getSettings(true);
+      }
+    } else {
+      await this.db.collection(COLLECTION_NAMES.SYSTEM_SETTINGS).updateOne(
+        { key: 'GLOBAL_CONFIG' },
+        {
+          $set: {
+            afip: newAfip,
+            updatedAt: now,
+          },
+        },
+        { upsert: true },
+      );
+      await this.settingsService.getSettings(true);
+    }
 
     await this.auditService.recordAuditLog({
       action: 'MASTER_AFIP_SETTINGS_UPDATED',
       actor,
-      targetCollection: COLLECTION_NAMES.SYSTEM_SETTINGS,
-      targetId: 'GLOBAL_CONFIG:afip',
+      targetCollection: companyId
+        ? COLLECTION_NAMES.COMPANIES
+        : COLLECTION_NAMES.SYSTEM_SETTINGS,
+      targetId: companyId ? `company:${companyId}` : 'GLOBAL_CONFIG:afip',
       metadata: {
+        companyId: companyId || null,
+        companyName: targetCompany?.name || 'Default Global',
         isEnabled: newAfip.isEnabled,
         isProduction: newAfip.isProduction,
         cuit: newAfip.cuit,
@@ -211,7 +281,7 @@ export class AfipMasterService {
       },
     });
 
-    return this.getSettings(true);
+    return this.getSettings(true, companyId);
   }
 
   /**
@@ -220,8 +290,9 @@ export class AfipMasterService {
   async testConnection(
     actor: AuthenticatedUser,
     options?: { cuitOverride?: string; isProductionOverride?: boolean },
+    companyId?: string,
   ): Promise<TestAfipConnectionResult> {
-    const raw = await this.getRawSettings();
+    const raw = await this.getRawSettings(companyId);
     const isProduction = options?.isProductionOverride ?? raw?.isProduction ?? false;
     const rawCuit = options?.cuitOverride?.trim() || raw?.cuit || '';
     const cleanCuit = rawCuit.replace(/\D/g, '');
