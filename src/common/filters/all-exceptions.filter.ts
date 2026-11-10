@@ -69,6 +69,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
           'El motor de MongoDB Atlas rechazó el documento por violar las reglas $jsonSchema.';
         details = mongoErr.errInfo;
       }
+    } else if (
+      typeof exception === 'object' &&
+      exception !== null &&
+      'statusCode' in exception &&
+      typeof (exception as any).statusCode === 'number'
+    ) {
+      const fastifyErr = exception as {
+        statusCode: number;
+        code?: string;
+        message?: string;
+      };
+      status = fastifyErr.statusCode;
+      code = fastifyErr.code || HttpStatus[status] || 'BAD_REQUEST';
+      message = fastifyErr.message || 'Error en la petición';
     }
 
     if (status >= 500) {

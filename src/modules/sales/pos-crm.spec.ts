@@ -343,4 +343,150 @@ describe('POS + CRM (DB-First & Mobile-First Architecture)', () => {
       expect(preview.totalCents).toBe(20570);
     });
   });
+
+  describe('Dashboard de Inteligencia de Negocios (BI Analytics)', () => {
+    it('debe agregar correctamente KPIs, desglose de formas de pago, top productos y flujo operativo', async () => {
+      const cashierId = new Types.ObjectId();
+      const mockSales = [
+        {
+          _id: new Types.ObjectId(),
+          receiptNumber: 'B-0001-00000100',
+          cashierId,
+          status: 'COMPLETED',
+          createdAt: new Date(),
+          subtotalCents: 500000,
+          discountCents: 50000,
+          totalCents: 450000, // $4,500.00
+          customerSnapshot: {
+            fullName: 'Cliente CRM VIP',
+            discountPercentageApplied: 10,
+          },
+          items: [
+            {
+              sku: 'WHEY-1KG',
+              name: 'Proteína Whey 1kg',
+              quantity: 2,
+              lineSubtotalCents: 500000,
+            },
+          ],
+          payments: [
+            {
+              method: 'TRANSFER',
+              amountCents: 450000,
+              reference: 'MP-20261110-123456',
+            },
+          ],
+        },
+        {
+          _id: new Types.ObjectId(),
+          receiptNumber: 'B-0001-00000101',
+          cashierId,
+          status: 'COMPLETED',
+          createdAt: new Date(),
+          subtotalCents: 300000,
+          discountCents: 0,
+          totalCents: 300000, // $3,000.00
+          customerSnapshot: null,
+          items: [
+            {
+              sku: 'CREA-300G',
+              name: 'Creatina Creapure 300g',
+              quantity: 1,
+              lineSubtotalCents: 300000,
+            },
+          ],
+          payments: [
+            {
+              method: 'CASH',
+              amountCents: 300000,
+              reference: null,
+            },
+          ],
+        },
+      ];
+
+      const mockSaleModel = {
+        find: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(mockSales),
+          }),
+        }),
+      };
+
+      const mockConnection = {
+        db: {
+          collection: jest.fn().mockImplementation((name: string) => {
+            if (name === 'users') {
+              return {
+                find: jest.fn().mockReturnValue({
+                  toArray: jest.fn().mockResolvedValue([
+                    {
+                      _id: cashierId,
+                      fullName: 'Cajero Local',
+                      email: 'cajero@justimobile.com',
+                      branch: 'LOCALES',
+                    },
+                  ]),
+                }),
+              };
+            }
+            if (name === 'cash_operations') {
+              return {
+                find: jest.fn().mockReturnValue({
+                  toArray: jest.fn().mockResolvedValue([
+                    {
+                      type: 'GASTO',
+                      amountCents: 150000, // $1,500.00
+                      branch: 'LOCALES',
+                    },
+                  ]),
+                }),
+              };
+            }
+            return {
+              find: jest.fn().mockReturnValue({
+                toArray: jest.fn().mockResolvedValue([]),
+              }),
+            };
+          }),
+        },
+      };
+
+      const salesService = new SalesService(
+        mockConnection as never,
+        mockSaleModel as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      );
+
+      const bi = await salesService.getBusinessIntelligence('7d', 'ALL');
+
+      // 1. Resumen ejecutivo
+      expect(bi.summary.totalRevenuePesos).toBe(7500); // 4500 + 3000
+      expect(bi.summary.totalTransactions).toBe(2);
+      expect(bi.summary.averageTicketPesos).toBe(3750);
+      expect(bi.summary.totalExpensesPesos).toBe(1500);
+      expect(bi.summary.operatingCashFlowPesos).toBe(6000); // 7500 - 1500
+
+      // 2. Mix de cobro
+      const mpPay = bi.paymentMix.find((p) => p.label === 'QR Mercado Pago');
+      expect(mpPay).toBeDefined();
+      expect(mpPay?.totalPesos).toBe(4500);
+
+      const cashPay = bi.paymentMix.find((p) => p.label === 'Efectivo');
+      expect(cashPay).toBeDefined();
+      expect(cashPay?.totalPesos).toBe(3000);
+
+      // 3. Top Productos
+      expect(bi.topProducts.length).toBeGreaterThan(0);
+      expect(bi.topProducts[0].sku).toBe('WHEY-1KG');
+      expect(bi.topProducts[0].unitsSold).toBe(2);
+
+      // 4. Fidelización CRM
+      expect(bi.crmInsights.crmSalesCount).toBe(1);
+      expect(bi.crmInsights.crmAdoptionRate).toBe(50);
+      expect(bi.crmInsights.totalCrmDiscountPesos).toBe(500);
+    });
+  });
 });

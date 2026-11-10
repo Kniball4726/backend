@@ -24,13 +24,18 @@ export class AuditService {
   }): Promise<void> {
     if (!this.connection.db) return;
 
+    const actorIdentifier =
+      (params.actor.isApiKey
+        ? params.actor.apiKeyPrefix || params.actor.email
+        : params.actor.email) ||
+      params.actor.sub ||
+      'UNKNOWN_ACTOR';
+
     await this.connection.db.collection(COLLECTION_NAMES.AUDIT_LOGS).insertOne({
       _id: new Types.ObjectId(),
       action: params.action,
       actorType: params.actor.isApiKey ? 'API_KEY' : 'USER',
-      actorIdentifier: params.actor.isApiKey
-        ? params.actor.apiKeyPrefix || params.actor.email
-        : params.actor.email,
+      actorIdentifier,
       targetCollection: params.targetCollection ?? null,
       targetId: params.targetId ?? null,
       metadata: params.metadata ?? null,

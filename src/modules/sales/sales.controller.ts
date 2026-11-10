@@ -132,6 +132,33 @@ export class SalesController {
     return this.salesService.findByReceiptNumber(receiptNumber, user);
   }
 
+  @Get('analytics/business-intelligence')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Dashboard de Inteligencia de Negocios (BI): KPIs ejecutivos, gráficos de tendencia, mix de cobro, top productos y comparativa de sucursales [Solo ADMIN y MASTER]',
+  })
+  @ApiQuery({
+    name: 'timeRange',
+    required: false,
+    enum: ['today', '7d', '30d', 'all'],
+    description: 'Ventana temporal de análisis (por defecto 7d)',
+  })
+  @ApiQuery({
+    name: 'branch',
+    required: false,
+    description: 'Filtrar por sucursal: ALL, LOCALES o CARRERAS',
+  })
+  getBusinessIntelligence(
+    @Query('timeRange') timeRange?: 'today' | '7d' | '30d' | 'all',
+    @Query('branch') branch?: string,
+  ) {
+    return this.salesService.getBusinessIntelligence(
+      timeRange || '7d',
+      branch || 'ALL',
+    );
+  }
+
   @Post('mercadopago/create-qr-order')
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.CASHIER)

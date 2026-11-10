@@ -24,6 +24,7 @@ import {
   MercadoPagoPosService,
   QrOrderResult,
 } from './services/mercadopago-pos.service';
+import { SalesBiService } from './services/sales-bi.service';
 import { SalesPricingService } from './services/sales-pricing.service';
 import { SalesQueryService } from './services/sales-query.service';
 import { SalesTransactionService } from './services/sales-transaction.service';
@@ -35,12 +36,14 @@ import { SalesTransactionService } from './services/sales-transaction.service';
  * - SalesTransactionService: Cobro y anulación con garantías transaccionales ACID
  * - SalesQueryService: Consultas y comprobantes con aislamiento por rol
  * - MercadoPagoPosService: Generación de QR dinámico y verificación de pagos
+ * - SalesBiService: Inteligencia de negocios (BI), tendencias, top productos y KPIs
  */
 @Injectable()
 export class SalesService {
   public readonly pricingService: SalesPricingService;
   public readonly transactionService: SalesTransactionService;
   public readonly queryService: SalesQueryService;
+  public readonly biService: SalesBiService;
 
   constructor(
     @InjectConnection() private readonly connection: Connection,
@@ -56,6 +59,7 @@ export class SalesService {
     @Optional() transactionService?: SalesTransactionService,
     @Optional() queryService?: SalesQueryService,
     @Optional() private readonly mpPosService?: MercadoPagoPosService,
+    @Optional() biService?: SalesBiService,
   ) {
     this.pricingService =
       pricingService ||
@@ -76,6 +80,10 @@ export class SalesService {
     this.queryService =
       queryService ||
       new SalesQueryService(this.connection, this.saleModel);
+
+    this.biService =
+      biService ||
+      new SalesBiService(this.connection, this.saleModel);
   }
 
   createMercadoPagoQrOrder(params: CreateQrOrderParams): Promise<QrOrderResult> {
@@ -145,5 +153,15 @@ export class SalesService {
    */
   findByReceiptNumber(receiptNumber: string, user?: AuthenticatedUser) {
     return this.queryService.findByReceiptNumber(receiptNumber, user);
+  }
+
+  /**
+   * Genera el reporte de Inteligencia de Negocios (BI) para administradores.
+   */
+  getBusinessIntelligence(
+    timeRange: 'today' | '7d' | '30d' | 'all' = '7d',
+    branch = 'ALL',
+  ) {
+    return this.biService.getBusinessIntelligence(timeRange, branch);
   }
 }

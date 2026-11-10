@@ -8,6 +8,7 @@ import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
 import { Sale, SaleSchema } from './schemas/sale.schema';
 import { MercadoPagoPosService } from './services/mercadopago-pos.service';
+import { SalesBiService } from './services/sales-bi.service';
 import { SalesPricingService } from './services/sales-pricing.service';
 import { SalesQueryService } from './services/sales-query.service';
 import { SalesTransactionService } from './services/sales-transaction.service';
@@ -25,6 +26,7 @@ import { SalesTransactionService } from './services/sales-transaction.service';
     SalesTransactionService,
     SalesQueryService,
     MercadoPagoPosService,
+    SalesBiService,
     SalesService,
   ],
   exports: [
@@ -32,6 +34,7 @@ import { SalesTransactionService } from './services/sales-transaction.service';
     SalesTransactionService,
     SalesQueryService,
     MercadoPagoPosService,
+    SalesBiService,
     SalesService,
   ],
 })

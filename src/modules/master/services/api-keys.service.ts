@@ -102,7 +102,12 @@ export class ApiKeysService {
         { projection: { keyHash: 0 }, returnDocument: 'after' },
       );
 
-    if (!res) {
+    const doc =
+      (res && typeof res === 'object' && 'value' in res
+        ? (res as any).value
+        : res) ?? res;
+
+    if (!doc) {
       throw new NotFoundException('API Key no encontrada');
     }
 
@@ -111,9 +116,9 @@ export class ApiKeysService {
       actor,
       targetCollection: COLLECTION_NAMES.API_KEYS,
       targetId: id,
-      metadata: { keyPrefix: res.keyPrefix, name: res.name },
+      metadata: { keyPrefix: doc.keyPrefix, name: doc.name },
     });
 
-    return res;
+    return doc;
   }
 }
