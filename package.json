@@ -15,6 +15,7 @@
     "db:provision": "ts-node -r tsconfig-paths/register src/database/cli-provision.ts",
     "db:seed": "ts-node -r tsconfig-paths/register src/database/cli-provision.ts --seed",
     "db:import-excel": "ts-node -r tsconfig-paths/register src/database/cli-import-excel.ts",
+    "db:provision-test": "ts-node -r tsconfig-paths/register src/database/cli-provision-test-db.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
