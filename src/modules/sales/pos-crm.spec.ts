@@ -245,5 +245,102 @@ describe('POS + CRM (DB-First & Mobile-First Architecture)', () => {
       expect(preview.taxCents).toBe(2720);
       expect(preview.totalCents).toBe(19720);
     });
+
+    it('debe permitir modificar el precio unitario (customPriceCents) desde el POS sin alterar el catálogo maestro', async () => {
+      const productId = new Types.ObjectId();
+
+      const mockProductModel = {
+        find: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            {
+              _id: productId,
+              sku: 'SUPP-CUSTOM',
+              name: 'Creatina Micronizada 300g',
+              priceCents: 15000, // Catálogo maestro: $150.00
+              taxRateBasisPoints: 2100, // 21% IVA
+              trackInventory: false,
+              stock: 50,
+              isActive: true,
+            },
+          ]),
+        }),
+      };
+
+      const salesService = new SalesService(
+        {} as never,
+        {} as never,
+        mockProductModel as never,
+        {} as never,
+        {} as never,
+      );
+
+      // Vendedor modifica el precio a $120.00 (12000 centavos) para 2 unidades
+      const preview = await salesService.previewSale({
+        items: [
+          {
+            productId: productId.toString(),
+            quantity: 2,
+            customPriceCents: 12000,
+          },
+        ],
+        applyCustomerDiscount: false,
+      });
+
+      expect(preview.items[0].unitPriceCents).toBe(12000);
+      expect(preview.items[0].lineSubtotalCents).toBe(24000); // 2 * 12000
+      expect(preview.subtotalCents).toBe(24000);
+      // IVA 21% sobre 24000 = 5040 centavos
+      expect(preview.taxCents).toBe(5040);
+      expect(preview.totalCents).toBe(29040);
+    });
+
+    it('debe aplicar descuento por ítem (discountPercentage: 15) en formato -15% sobre el precio del vendedor', async () => {
+      const productId = new Types.ObjectId();
+
+      const mockProductModel = {
+        find: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            {
+              _id: productId,
+              sku: 'WHEY-100',
+              name: 'Proteína Whey 1kg',
+              priceCents: 20000, // $200.00
+              taxRateBasisPoints: 2100, // 21% IVA
+              trackInventory: false,
+              stock: 30,
+              isActive: true,
+            },
+          ]),
+        }),
+      };
+
+      const salesService = new SalesService(
+        {} as never,
+        {} as never,
+        mockProductModel as never,
+        {} as never,
+        {} as never,
+      );
+
+      // Descuento del 15% cargado por el vendedor (-15) sobre 1 unidad de $200.00
+      const preview = await salesService.previewSale({
+        items: [
+          {
+            productId: productId.toString(),
+            quantity: 1,
+            discountPercentage: 15,
+          },
+        ],
+        applyCustomerDiscount: false,
+      });
+
+      // Precio con descuento: $200 * (1 - 0.15) = $170.00 (17000 centavos)
+      expect(preview.items[0].unitPriceCents).toBe(17000);
+      expect(preview.items[0].lineSubtotalCents).toBe(17000);
+      expect(preview.subtotalCents).toBe(17000);
+      // IVA 21% sobre 17000 = 3570 centavos
+      expect(preview.taxCents).toBe(3570);
+      expect(preview.totalCents).toBe(20570);
+    });
   });
 });

@@ -4,6 +4,8 @@ import { z } from 'zod';
 export const SaleItemInputSchema = z.object({
   productId: z.string().min(1, 'ID de producto obligatorio'),
   quantity: z.number().positive('La cantidad debe ser mayor a 0'),
+  customPriceCents: z.number().int().min(0).optional(),
+  discountPercentage: z.number().min(0).max(100).optional(),
 });
 
 export const SalePaymentInputSchema = z.object({
@@ -18,6 +20,7 @@ export const PreviewSaleSchema = z.object({
     .min(1, 'La venta debe contener al menos un producto'),
   customerId: z.string().nullish(),
   applyCustomerDiscount: z.boolean().default(false),
+  discountPercentage: z.number().min(0).max(100).optional(),
 });
 
 export class PreviewSaleDto extends createZodDto(PreviewSaleSchema) {}

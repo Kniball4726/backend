@@ -86,8 +86,24 @@ export class SalesService {
         });
       }
 
+      const basePriceCents =
+        typeof reqItem.customPriceCents === 'number' &&
+        reqItem.customPriceCents >= 0
+          ? reqItem.customPriceCents
+          : product.priceCents;
+
+      const itemDiscountPct =
+        typeof reqItem.discountPercentage === 'number' &&
+        reqItem.discountPercentage >= 0
+          ? Math.min(100, reqItem.discountPercentage)
+          : 0;
+
+      const unitPriceCents = Math.round(
+        basePriceCents * (1 - itemDiscountPct / 100),
+      );
+
       const lineSubtotalCents = Math.round(
-        product.priceCents * reqItem.quantity,
+        unitPriceCents * reqItem.quantity,
       );
       const lineTaxCents = Math.round(
         (lineSubtotalCents * product.taxRateBasisPoints) / 10000,
@@ -101,13 +117,16 @@ export class SalesService {
         sku: product.sku,
         name: product.name,
         quantity: reqItem.quantity,
-        unitPriceCents: product.priceCents,
+        unitPriceCents,
         taxRateBasisPoints: product.taxRateBasisPoints,
         lineSubtotalCents,
       };
     });
 
-    let discountPercentageApplied = 0;
+    let discountPercentageApplied =
+      typeof dto.discountPercentage === 'number' && dto.discountPercentage >= 0
+        ? Math.min(100, dto.discountPercentage)
+        : 0;
     let customerInfo: {
       id: string;
       fullName: string;
@@ -140,11 +159,19 @@ export class SalesService {
       }
     }
 
+    const hasItemDiscounts = dto.items.some(
+      (i) => typeof i.discountPercentage === 'number' && i.discountPercentage > 0,
+    );
+
     const totals = calculateSaleTotals({
       subtotalCents,
       rawTaxCents,
-      discountPercentageApplied,
+      discountPercentageApplied: hasItemDiscounts ? 0 : discountPercentageApplied,
     });
+
+    if (hasItemDiscounts && discountPercentageApplied > 0) {
+      totals.discountPercentageApplied = discountPercentageApplied;
+    }
 
     return {
       customer: customerInfo,
@@ -285,8 +312,24 @@ export class SalesService {
             });
           }
 
+          const basePriceCents =
+            typeof reqItem.customPriceCents === 'number' &&
+            reqItem.customPriceCents >= 0
+              ? reqItem.customPriceCents
+              : product.priceCents;
+
+          const itemDiscountPct =
+            typeof reqItem.discountPercentage === 'number' &&
+            reqItem.discountPercentage >= 0
+              ? Math.min(100, reqItem.discountPercentage)
+              : 0;
+
+          const unitPriceCents = Math.round(
+            basePriceCents * (1 - itemDiscountPct / 100),
+          );
+
           const lineSubtotalCents = Math.round(
-            product.priceCents * reqItem.quantity,
+            unitPriceCents * reqItem.quantity,
           );
           const lineTaxCents = Math.round(
             (lineSubtotalCents * product.taxRateBasisPoints) / 10000,
@@ -300,7 +343,7 @@ export class SalesService {
             sku: product.sku,
             name: product.name,
             quantity: reqItem.quantity,
-            unitPriceCents: product.priceCents,
+            unitPriceCents,
             taxRateBasisPoints: product.taxRateBasisPoints,
             lineSubtotalCents,
           });
@@ -312,7 +355,11 @@ export class SalesService {
           email: string;
           discountPercentageApplied: number;
         } | null = null;
-        let discountPercentageApplied = 0;
+        let discountPercentageApplied =
+          typeof dto.discountPercentage === 'number' &&
+          dto.discountPercentage >= 0
+            ? Math.min(100, dto.discountPercentage)
+            : 0;
 
         if (dto.customerId) {
           if (dto.applyCustomerDiscount) {
@@ -344,11 +391,19 @@ export class SalesService {
           );
         }
 
-        const { discountCents, taxCents, totalCents } = calculateSaleTotals({
+        const hasItemDiscounts = dto.items.some(
+          (i) => typeof i.discountPercentage === 'number' && i.discountPercentage > 0,
+        );
+
+        const totalsCalc = calculateSaleTotals({
           subtotalCents,
           rawTaxCents,
-          discountPercentageApplied,
+          discountPercentageApplied: hasItemDiscounts ? 0 : discountPercentageApplied,
         });
+
+        const discountCents = totalsCalc.discountCents;
+        const taxCents = totalsCalc.taxCents;
+        const totalCents = totalsCalc.totalCents;
 
         const totalPaidCents = dto.payments.reduce(
           (sum, p) => sum + p.amountCents,
