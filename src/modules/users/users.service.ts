@@ -115,14 +115,16 @@ export class UsersService {
       isActive: true,
     });
 
+    const isMaster = requesterRole === UserRole.MASTER;
+
     return {
       id: created._id.toString(),
       email: created.email,
       fullName: created.fullName,
       role: created.role,
       branch: created.branch,
-      companyId: created.companyId ? created.companyId.toString() : null,
-      companyName: created.companyName || null,
+      companyId: isMaster && created.companyId ? created.companyId.toString() : null,
+      companyName: isMaster ? (created.companyName || null) : null,
       isActive: created.isActive,
       createdAt: created.createdAt,
     };
@@ -159,8 +161,15 @@ export class UsersService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
+    const isMaster = requesterRole === UserRole.MASTER;
+
     return {
       ...(updated as any),
+      companyId:
+        isMaster && (updated as any).companyId
+          ? (updated as any).companyId.toString()
+          : null,
+      companyName: isMaster ? (updated as any).companyName || null : null,
       branch: (updated as any).branch || BranchName.LOCALES,
     };
   }
@@ -201,10 +210,12 @@ export class UsersService {
               u.role === UserRole.CRM || u.role === UserRole.CASHIER,
           );
 
+    const isMaster = requesterRole === UserRole.MASTER;
+
     return visibleUsers.map((u: any) => ({
       ...u,
-      companyId: u.companyId ? u.companyId.toString() : null,
-      companyName: u.companyName || null,
+      companyId: isMaster && u.companyId ? u.companyId.toString() : null,
+      companyName: isMaster ? u.companyName || null : null,
       branch: u.branch || BranchName.LOCALES,
     }));
   }

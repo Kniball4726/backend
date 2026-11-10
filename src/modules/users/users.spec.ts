@@ -126,14 +126,16 @@ describe('Users Module (UsersService)', () => {
         adminActor,
       );
 
-      expect(result.companyId).toBe(companyId.toString());
-      expect(result.companyName).toBe('UltraTech Carreras');
+      // La empresa queda vinculada en la base de datos automáticamente
       expect(mockUserModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
           companyId,
           companyName: 'UltraTech Carreras',
         }),
       );
+      // Pero para el ADMIN la respuesta oculta la empresa (solo visible por MASTER)
+      expect(result.companyId).toBeNull();
+      expect(result.companyName).toBeNull();
     });
   });
 
@@ -191,6 +193,60 @@ describe('Users Module (UsersService)', () => {
       const listForAdmin = await usersService.findAll(UserRole.ADMIN);
       expect(listForAdmin).toHaveLength(2);
       expect(listForAdmin.map((u) => u.role)).toEqual([UserRole.CASHIER, UserRole.CRM]);
+    });
+
+    it('debe ocultar la empresa asociada (companyId y companyName en null) cuando consulta un ADMIN', async () => {
+      const companyId = new Types.ObjectId();
+      const usersInDb = [
+        {
+          _id: new Types.ObjectId(),
+          fullName: 'Cajero 1',
+          role: UserRole.CASHIER,
+          branch: BranchName.LOCALES,
+          companyId,
+          companyName: 'UltraTech Carreras',
+        },
+      ];
+
+      mockUserModel.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(usersInDb),
+          }),
+        }),
+      });
+
+      const listForAdmin = await usersService.findAll(UserRole.ADMIN);
+      expect(listForAdmin).toHaveLength(1);
+      expect(listForAdmin[0].companyId).toBeNull();
+      expect(listForAdmin[0].companyName).toBeNull();
+    });
+
+    it('debe permitir ver la empresa asociada cuando consulta el usuario MASTER', async () => {
+      const companyId = new Types.ObjectId();
+      const usersInDb = [
+        {
+          _id: new Types.ObjectId(),
+          fullName: 'Cajero 1',
+          role: UserRole.CASHIER,
+          branch: BranchName.LOCALES,
+          companyId,
+          companyName: 'UltraTech Carreras',
+        },
+      ];
+
+      mockUserModel.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(usersInDb),
+          }),
+        }),
+      });
+
+      const listForMaster = await usersService.findAll(UserRole.MASTER);
+      expect(listForMaster).toHaveLength(1);
+      expect(listForMaster[0].companyId).toBe(companyId.toString());
+      expect(listForMaster[0].companyName).toBe('UltraTech Carreras');
     });
   });
 });
