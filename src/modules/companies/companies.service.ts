@@ -62,13 +62,13 @@ export interface PublicBrandingInfo {
 
 const DEFAULT_BRANDING: PublicBrandingInfo = {
   companyId: 'default',
-  companyName: 'UltraTech Carreras',
-  legalName: 'UltraTech Sports Nutrition S.A.',
+  companyName: 'Comercio Principal (SaaS)',
+  legalName: 'Empresa Matriz S.A.',
   cuit: '30-71234567-9',
-  slogan: 'ADVANCED TECHNOLOGY IN SPORTS NUTRITION',
-  logoUrl: '/ultratech-carreras-logo.svg',
-  bannerUrl: '/ultratech-carreras-banner.svg',
-  primaryColor: '#D4AF37',
+  slogan: 'PLATAFORMA SAAS MULTI-TENANT',
+  logoUrl: '/justi-logo.svg',
+  bannerUrl: '/justi-logo.svg',
+  primaryColor: '#1B5E91',
   customSvg: null,
   status: 'ACTIVE',
 };
@@ -107,9 +107,9 @@ export class CompaniesService implements OnModuleInit {
           cuit: cleanCuit(DEFAULT_BRANDING.cuit),
           cuitFormatted: DEFAULT_BRANDING.cuit,
           status: 'ACTIVE',
-          address: 'Av. Corrientes 1234, CABA',
-          phone: '+54 11 4321-8765',
-          email: 'contacto@ultratech.com.ar',
+          address: 'Av. Principal 1234, Sede Central',
+          phone: '+54 11 0000-0000',
+          email: 'contacto@empresa.com',
           branding: {
             logoUrl: DEFAULT_BRANDING.logoUrl,
             bannerUrl: DEFAULT_BRANDING.bannerUrl,
@@ -265,11 +265,11 @@ export class CompaniesService implements OnModuleInit {
       phone: dto.phone?.trim() || null,
       email: dto.email?.trim() || null,
       branding: {
-        logoUrl: dto.branding?.logoUrl || '/ultratech-carreras-logo.svg',
-        bannerUrl: dto.branding?.bannerUrl || '/ultratech-carreras-banner.svg',
-        primaryColor: dto.branding?.primaryColor || '#D4AF37',
+        logoUrl: dto.branding?.logoUrl || '/justi-logo.svg',
+        bannerUrl: dto.branding?.bannerUrl || '/justi-logo.svg',
+        primaryColor: dto.branding?.primaryColor || '#1B5E91',
         slogan:
-          dto.branding?.slogan || 'ADVANCED TECHNOLOGY IN SPORTS NUTRITION',
+          dto.branding?.slogan || 'PLATAFORMA SAAS MULTI-TENANT',
         customSvg: dto.branding?.customSvg || null,
       },
       isDefault: false,

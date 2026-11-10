@@ -29,6 +29,8 @@ export interface AuthenticatedUser {
   fullName: string;
   role: UserRole;
   branch?: BranchName;
+  companyId?: string | null;
+  companyName?: string | null;
   iat?: number;
   isApiKey?: boolean;
   apiKeyPrefix?: string;

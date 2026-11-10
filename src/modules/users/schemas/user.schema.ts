@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { BranchName, UserRole } from '../../../common/enums/role.enum';
 import { COLLECTION_NAMES } from '../../../database/json-schemas/collections.json-schema';
 
@@ -35,6 +35,12 @@ export class User {
     default: BranchName.LOCALES,
   })
   branch: BranchName;
+
+  @Prop({ type: Types.ObjectId, ref: 'companies', default: null })
+  companyId: Types.ObjectId | null;
+
+  @Prop({ type: String, default: null })
+  companyName: string | null;
 
   @Prop({ type: String, default: null })
   refreshTokenHash: string | null;

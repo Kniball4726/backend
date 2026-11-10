@@ -78,12 +78,62 @@ describe('Users Module (UsersService)', () => {
           password: 'Password123!',
           branch: BranchName.LOCALES,
         },
-        UserRole.ADMIN,
+        UserRole.MASTER,
       );
 
       expect(result.email).toBe('daniel@justimobile.com');
-      expect(result.role).toBe(UserRole.CASHIER);
       expect(result.branch).toBe(BranchName.LOCALES);
+      expect(result.role).toBe(UserRole.CASHIER);
+    });
+
+    it('debe vincular automáticamente el usuario a la empresa del administrador cuando un ADMIN crea un operador', async () => {
+      mockUserModel.findOne.mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null),
+      });
+
+      const companyId = new Types.ObjectId();
+      const adminActor = {
+        sub: new Types.ObjectId().toString(),
+        email: 'admin@empresa.com',
+        fullName: 'Admin Sucursal',
+        role: UserRole.ADMIN,
+        companyId: companyId.toString(),
+        companyName: 'UltraTech Carreras',
+      };
+
+      const fakeUser = {
+        _id: new Types.ObjectId(),
+        email: 'vendedor@empresa.com',
+        fullName: 'Vendedor 1',
+        role: UserRole.CRM,
+        branch: BranchName.CARRERAS,
+        companyId,
+        companyName: 'UltraTech Carreras',
+        isActive: true,
+        createdAt: new Date(),
+      };
+
+      mockUserModel.create.mockResolvedValue(fakeUser);
+
+      const result = await usersService.create(
+        {
+          email: 'vendedor@empresa.com',
+          fullName: 'Vendedor 1',
+          role: UserRole.CRM,
+          password: 'Password123!',
+          branch: BranchName.CARRERAS,
+        },
+        adminActor,
+      );
+
+      expect(result.companyId).toBe(companyId.toString());
+      expect(result.companyName).toBe('UltraTech Carreras');
+      expect(mockUserModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          companyId,
+          companyName: 'UltraTech Carreras',
+        }),
+      );
     });
   });
 

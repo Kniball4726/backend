@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -27,13 +28,13 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary:
-      'Crear un nuevo usuario (ADMIN solo por MASTER; CRM o CASHIER por ADMIN/MASTER) asignándole sucursal (LOCALES o CARRERAS)',
+      'Crear un nuevo usuario (ADMIN solo por MASTER; CRM o CASHIER por ADMIN/MASTER) asignándole sucursal y empresa',
   })
   create(
     @Body() dto: CreateUserDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.usersService.create(dto, user?.role);
+    return this.usersService.create(dto, user);
   }
 
   @Patch(':id/branch')
@@ -53,9 +54,12 @@ export class UsersController {
   @Get()
   @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Listar usuarios registrados y su sucursal asignada [Solo ADMIN/MASTER]',
+    summary: 'Listar usuarios registrados con filtro opcional de empresa [Solo ADMIN/MASTER]',
   })
-  findAll(@CurrentUser() user: AuthenticatedUser): Promise<UserSummary[]> {
-    return this.usersService.findAll(user?.role);
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('companyId') companyId?: string,
+  ): Promise<UserSummary[]> {
+    return this.usersService.findAll(user, companyId);
   }
 }

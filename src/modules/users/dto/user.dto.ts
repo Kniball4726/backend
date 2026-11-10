@@ -14,6 +14,7 @@ export const CreateUserSchema = z.object({
   branch: z
     .enum([BranchName.LOCALES, BranchName.CARRERAS])
     .default(BranchName.LOCALES),
+  companyId: z.string().trim().nullish(),
 });
 
 export class CreateUserDto extends createZodDto(CreateUserSchema) {}

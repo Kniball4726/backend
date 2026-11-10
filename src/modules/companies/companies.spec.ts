@@ -44,8 +44,8 @@ describe('Companies & Multi-Tenant Branding Service', () => {
       mockCompaniesCol.findOne.mockResolvedValue(null);
       const branding = await companiesService.getPublicBranding();
 
-      expect(branding.companyName).toBe('UltraTech Carreras');
-      expect(branding.logoUrl).toBe('/ultratech-carreras-logo.svg');
+      expect(branding.companyName).toBe('Comercio Principal (SaaS)');
+      expect(branding.logoUrl).toBe('/justi-logo.svg');
       expect(branding.status).toBe('ACTIVE');
     });
 
@@ -134,8 +134,8 @@ describe('Companies & Multi-Tenant Branding Service', () => {
       const companyId = new Types.ObjectId();
       mockCompaniesCol.findOne.mockResolvedValue({
         _id: companyId,
-        name: 'UltraTech Carreras',
-        legalName: 'UltraTech S.A.',
+        name: 'Comercio Modelo',
+        legalName: 'Comercio Modelo S.A.',
         branding: { logoUrl: '/logo.svg' },
       });
       mockCompaniesCol.updateOne.mockResolvedValue({ modifiedCount: 1 });
@@ -143,9 +143,9 @@ describe('Companies & Multi-Tenant Branding Service', () => {
       const updated = await companiesService.updateBranding(
         companyId.toString(),
         {
-          companyName: 'UltraTech Endurance & Carreras',
+          companyName: 'Comercio Modelo Plus',
           logoUrl: '/nuevo-logo.svg',
-          slogan: 'ALTO RENDIMIENTO EN CARRERAS',
+          slogan: 'INNOVACIÓN Y SERVICIO',
         },
         mockActor,
       );
