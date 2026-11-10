@@ -1,10 +1,13 @@
 import {
   ExecutionContext,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import * as bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
 import { Types } from 'mongoose';
 import { AuthService } from '../modules/auth/auth.service';
@@ -15,8 +18,10 @@ import { ApiKeysService } from '../modules/master/services/api-keys.service';
 import { SalesService } from '../modules/sales/sales.service';
 import { TreasuryService } from '../modules/treasury/treasury.service';
 import { CreateUserSchema } from '../modules/users/dto/user.dto';
+import { THROTTLE_LIMIT_KEY } from './decorators/throttle.decorator';
 import { AuthenticatedUser, UserRole } from './enums/role.enum';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RateLimiterGuard } from './guards/rate-limiter.guard';
 import { RolesGuard } from './guards/roles.guard';
 
 function createMockExecutionContext(params: {
@@ -312,6 +317,162 @@ describe('Suite de Pruebas de Seguridad del Backend (OWASP API Security)', () =>
         }),
       ).rejects.toThrow(/Demasiados intentos fallidos/);
       AuthService.resetRateLimitForTesting();
+    });
+
+    it('debe bloquear por IP cuando un atacante realiza Password Spraying sobre múltiples cuentas (Anti-Fuerza Bruta por IP)', async () => {
+      AuthService.resetRateLimitForTesting();
+      const mockUsersService = {
+        findByEmail: jest.fn().mockResolvedValue(null),
+      };
+
+      const authService = new AuthService(
+        mockUsersService as never,
+        {} as never,
+        {} as never,
+      );
+
+      const attackerIp = '198.51.100.42';
+
+      // 8 intentos fallidos atacando distintas cuentas desde la misma IP
+      for (let i = 1; i <= 8; i++) {
+        await expect(
+          authService.login(
+            {
+              email: `user${i}@justimobile.com`,
+              password: 'WrongPassword!',
+            },
+            attackerIp,
+          ),
+        ).rejects.toThrow(UnauthorizedException);
+      }
+
+      // El intento 9 (incluso para una cuenta nueva y válida) debe ser bloqueado por IP
+      await expect(
+        authService.login(
+          {
+            email: 'admin_target@justimobile.com',
+            password: 'SomePassword!',
+          },
+          attackerIp,
+        ),
+      ).rejects.toThrow(/Demasiados intentos fallidos de inicio de sesión para su dirección IP/);
+
+      AuthService.resetRateLimitForTesting();
+    });
+
+    it('debe limpiar el contador de intentos fallidos al iniciar sesión exitosamente', async () => {
+      AuthService.resetRateLimitForTesting();
+      const passwordHash = await bcrypt.hash('CorrectPass123!', 4);
+      const mockUser = {
+        _id: new Types.ObjectId(),
+        email: 'valido@justimobile.com',
+        fullName: 'Usuario Valido',
+        role: UserRole.CASHIER,
+        branch: 'LOCALES',
+        isActive: true,
+        passwordHash,
+      };
+
+      const mockUsersService = {
+        findByEmail: jest.fn().mockResolvedValue(mockUser),
+        updateRefreshTokenHash: jest.fn().mockResolvedValue(undefined),
+      };
+
+      const mockJwtService = {
+        signAsync: jest.fn().mockResolvedValue('jwt_token_sample'),
+      };
+
+      const mockConfigService = {
+        get: jest.fn((k: string) => (k === 'JWT_SECRET' ? 'secret_key' : '15m')),
+      };
+
+      const authService = new AuthService(
+        mockUsersService as never,
+        mockJwtService as never,
+        mockConfigService as never,
+      );
+
+      const clientIp = '192.168.1.55';
+
+      // 3 intentos fallidos
+      for (let i = 0; i < 3; i++) {
+        await expect(
+          authService.login(
+            {
+              email: 'valido@justimobile.com',
+              password: 'WrongPassword!',
+            },
+            clientIp,
+          ),
+        ).rejects.toThrow(UnauthorizedException);
+      }
+
+      // Intento exitoso
+      const result = await authService.login(
+        {
+          email: 'valido@justimobile.com',
+          password: 'CorrectPass123!',
+        },
+        clientIp,
+      );
+      expect(result.user.email).toBe('valido@justimobile.com');
+
+      // Verificamos que las marcas en memoria se limpiaron
+      expect(AuthService['failedAttempts'].get('email:valido@justimobile.com')).toBeUndefined();
+      expect(AuthService['failedAttempts'].get(`ip:${clientIp}`)).toBeUndefined();
+
+      AuthService.resetRateLimitForTesting();
+    });
+
+    it('RateLimiterGuard debe aplicar límite deslizante y emitir 429 con cabecera Retry-After cuando se supera el límite de peticiones', () => {
+      RateLimiterGuard.resetForTesting();
+      const reflector = {
+        getAllAndOverride: jest.fn().mockReturnValue({
+          limit: 3,
+          ttlSeconds: 60,
+        }),
+      } as unknown as Reflector;
+
+      const guard = new RateLimiterGuard(reflector);
+      const headersSent: Record<string, any> = {};
+      const mockRes = {
+        header: jest.fn((key: string, val: any) => {
+          headersSent[key] = val;
+        }),
+      };
+
+      const mockContext = {
+        getHandler: () => ({ name: 'loginAction' }),
+        getClass: () => ({ name: 'AuthController' }),
+        switchToHttp: () => ({
+          getRequest: () => ({
+            headers: { 'x-real-ip': '203.0.113.10' },
+          }),
+          getResponse: () => mockRes,
+        }),
+      } as unknown as ExecutionContext;
+
+      // 3 peticiones permitidas
+      expect(guard.canActivate(mockContext)).toBe(true);
+      expect(guard.canActivate(mockContext)).toBe(true);
+      expect(guard.canActivate(mockContext)).toBe(true);
+      expect(headersSent['X-RateLimit-Limit']).toBe(3);
+      expect(headersSent['X-RateLimit-Remaining']).toBe(0);
+
+      // Petición 4 debe lanzar 429 Too Many Requests con Retry-After
+      try {
+        guard.canActivate(mockContext);
+        fail('Debería haber lanzado HttpException 429');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(HttpException);
+        expect(err.getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+        const resObj = err.getResponse();
+        expect(resObj.code).toBe('RATE_LIMIT_EXCEEDED');
+        expect(headersSent['Retry-After']).toBeDefined();
+        expect(resObj.details.retryAfterSeconds).toBeGreaterThan(0);
+      }
+
+      RateLimiterGuard.resetForTesting();
     });
   });
 

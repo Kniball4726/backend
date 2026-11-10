@@ -131,4 +131,41 @@ export class SalesController {
   ) {
     return this.salesService.findByReceiptNumber(receiptNumber, user);
   }
+
+  @Post('mercadopago/create-qr-order')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.CASHIER)
+  @ApiOperation({
+    summary:
+      'Generar orden con QR dinámico de Mercado Pago para cobro en POS [CASHIER o MASTER]',
+  })
+  createMercadoPagoQr(
+    @Body()
+    dto: {
+      totalPesos: number;
+      title?: string;
+      externalReference: string;
+    },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.salesService.createMercadoPagoQrOrder({
+      totalPesos: dto.totalPesos,
+      title: dto.title,
+      externalReference: dto.externalReference,
+      cashierBranch: user.branch,
+      cashierName: user.fullName,
+    });
+  }
+
+  @Get('mercadopago/order-status/:externalReference')
+  @Roles(UserRole.CASHIER)
+  @ApiOperation({
+    summary:
+      'Consultar en tiempo real si el cliente abonó la orden QR de Mercado Pago [CASHIER o MASTER]',
+  })
+  checkMercadoPagoStatus(
+    @Param('externalReference') externalReference: string,
+  ) {
+    return this.salesService.checkMercadoPagoPaymentStatus(externalReference);
+  }
 }

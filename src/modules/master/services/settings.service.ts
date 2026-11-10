@@ -6,6 +6,17 @@ import { COLLECTION_NAMES } from '../../../database/json-schemas/constants';
 import { UpdateSystemSettingsDto } from '../dto/master.dto';
 import { AuditService } from './audit.service';
 
+export interface MercadoPagoSettings {
+  isEnabled: boolean;
+  isSandbox: boolean;
+  publicKey: string | null;
+  accessToken: string | null;
+  webhookSecret: string | null;
+  posId: string | null;
+  userId: string | null;
+  updatedAt: Date | null;
+}
+
 export interface GlobalSystemSettings {
   key: 'GLOBAL_CONFIG';
   businessName: string;
@@ -17,6 +28,7 @@ export interface GlobalSystemSettings {
     crmPaused: boolean;
     reason: string | null;
   };
+  mercadoPago?: MercadoPagoSettings | null;
   lastKillSwitchAt?: Date | null;
   updatedAt: Date;
 }

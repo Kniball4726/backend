@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { AuthenticatedUser } from '../../common/enums/role.enum';
@@ -19,6 +19,11 @@ import {
   PreviewSaleDto,
 } from './dto/sale.dto';
 import { Sale, SaleDocument } from './schemas/sale.schema';
+import {
+  CreateQrOrderParams,
+  MercadoPagoPosService,
+  QrOrderResult,
+} from './services/mercadopago-pos.service';
 import { SalesPricingService } from './services/sales-pricing.service';
 import { SalesQueryService } from './services/sales-query.service';
 import { SalesTransactionService } from './services/sales-transaction.service';
@@ -29,6 +34,7 @@ import { SalesTransactionService } from './services/sales-transaction.service';
  * - SalesPricingService: Cotización en tiempo real, descuentos CRM y de línea
  * - SalesTransactionService: Cobro y anulación con garantías transaccionales ACID
  * - SalesQueryService: Consultas y comprobantes con aislamiento por rol
+ * - MercadoPagoPosService: Generación de QR dinámico y verificación de pagos
  */
 @Injectable()
 export class SalesService {
@@ -49,6 +55,7 @@ export class SalesService {
     @Optional() pricingService?: SalesPricingService,
     @Optional() transactionService?: SalesTransactionService,
     @Optional() queryService?: SalesQueryService,
+    @Optional() private readonly mpPosService?: MercadoPagoPosService,
   ) {
     this.pricingService =
       pricingService ||
@@ -69,6 +76,20 @@ export class SalesService {
     this.queryService =
       queryService ||
       new SalesQueryService(this.connection, this.saleModel);
+  }
+
+  createMercadoPagoQrOrder(params: CreateQrOrderParams): Promise<QrOrderResult> {
+    if (!this.mpPosService) {
+      throw new ServiceUnavailableException('Servicio de Mercado Pago no inicializado');
+    }
+    return this.mpPosService.createQrOrder(params);
+  }
+
+  checkMercadoPagoPaymentStatus(externalReference: string) {
+    if (!this.mpPosService) {
+      throw new ServiceUnavailableException('Servicio de Mercado Pago no inicializado');
+    }
+    return this.mpPosService.checkPaymentStatus(externalReference);
   }
 
   /**

@@ -93,4 +93,86 @@ describe('Master Module (ApiKeysService & Security)', () => {
       );
     });
   });
+
+  describe('Administración de Mercado Pago Exclusiva de MASTER', () => {
+    it('debe enmascarar los tokens de acceso con Zero-Knowledge y registrar auditoría de cambios', async () => {
+      const mockSettingsCol = {
+        findOne: jest.fn().mockResolvedValue({
+          key: 'GLOBAL_CONFIG',
+          mercadoPago: {
+            isEnabled: true,
+            isSandbox: false,
+            publicKey: 'APP_USR-pub-test-1234',
+            accessToken: 'APP_USR-9876543210-abcdef-1234',
+            webhookSecret: 'whsec_secret_123',
+            posId: 'SUCURSAL_LOCALES_1',
+            userId: '12345678',
+            updatedAt: new Date(),
+          },
+        }),
+        updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+      };
+
+      const mockDb = {
+        collection: jest.fn().mockReturnValue(mockSettingsCol),
+      };
+
+      const mockConn = { db: mockDb };
+      const { SettingsService } = await import('./services/settings.service');
+      const { MercadoPagoMasterService } = await import(
+        './services/mercadopago-master.service'
+      );
+
+      const settingsService = new SettingsService(mockConn as any, mockAuditService);
+      const mpMasterService = new MercadoPagoMasterService(
+        mockConn as any,
+        settingsService,
+        mockAuditService,
+      );
+
+      const settings = await mpMasterService.getSettings(true);
+      expect(settings.isEnabled).toBe(true);
+      expect(settings.hasAccessToken).toBe(true);
+      expect(settings.accessTokenMasked).toContain('****');
+      expect(settings.accessTokenMasked).not.toBe('APP_USR-9876543210-abcdef-1234');
+
+      const actor = {
+        sub: new Types.ObjectId().toString(),
+        email: 'master@justimobile.com',
+        fullName: 'Master User',
+        role: UserRole.MASTER,
+      };
+
+      // Si se envía el token con máscara, debe conservar el token original
+      await mpMasterService.updateSettings(
+        {
+          isEnabled: true,
+          isSandbox: false,
+          accessToken: 'APP_USR-****-****-1234',
+          posId: 'SUCURSAL_LOCALES_2',
+        },
+        actor,
+      );
+
+      expect(mockSettingsCol.updateOne).toHaveBeenCalledWith(
+        { key: 'GLOBAL_CONFIG' },
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            mercadoPago: expect.objectContaining({
+              accessToken: 'APP_USR-9876543210-abcdef-1234',
+              posId: 'SUCURSAL_LOCALES_2',
+            }),
+          }),
+        }),
+        { upsert: true },
+      );
+
+      expect(mockAuditService.recordAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'MASTER_MERCADOPAGO_SETTINGS_UPDATED',
+          actor,
+        }),
+      );
+    });
+  });
 });

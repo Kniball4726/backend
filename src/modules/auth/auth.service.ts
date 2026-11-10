@@ -34,7 +34,7 @@ export class AuthService {
     AuthService.failedAttempts.clear();
   }
 
-  private checkLoginRateLimit(key: string): void {
+  private checkLoginRateLimit(key: string, label = 'la cuenta'): void {
     const now = Date.now();
     const record = AuthService.failedAttempts.get(key);
     if (!record) return;
@@ -45,11 +45,18 @@ export class AuthService {
     }
 
     if (record.count >= MAX_FAILED_LOGIN_ATTEMPTS) {
+      const remainingSeconds = Math.max(
+        1,
+        Math.ceil((LOGIN_WINDOW_MS - (now - record.firstAttemptAt)) / 1000),
+      );
       throw new HttpException(
         {
           code: 'TOO_MANY_LOGIN_ATTEMPTS',
-          message:
-            'Demasiados intentos fallidos de inicio de sesión. Espere 60 segundos antes de volver a intentar.',
+          message: `Demasiados intentos fallidos de inicio de sesión para ${label}. Espere ${remainingSeconds} segundos antes de volver a intentar.`,
+          details: {
+            retryAfterSeconds: remainingSeconds,
+            lockedUntil: new Date(record.firstAttemptAt + LOGIN_WINDOW_MS).toISOString(),
+          },
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
@@ -66,23 +73,33 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto) {
-    const rateKey = dto.email.toLowerCase().trim();
-    this.checkLoginRateLimit(rateKey);
+  async login(dto: LoginDto, clientIp?: string) {
+    const emailKey = `email:${dto.email.toLowerCase().trim()}`;
+    const ipKey = clientIp ? `ip:${clientIp.trim()}` : null;
+
+    this.checkLoginRateLimit(emailKey, 'la cuenta');
+    if (ipKey) {
+      this.checkLoginRateLimit(ipKey, 'su dirección IP');
+    }
 
     const user = await this.usersService.findByEmail(dto.email);
     if (!user || !user.isActive) {
-      this.recordFailedLogin(rateKey);
+      this.recordFailedLogin(emailKey);
+      if (ipKey) this.recordFailedLogin(ipKey);
       throw new UnauthorizedException('Credenciales inválidas o cuenta inactiva');
     }
 
     const passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordValid) {
-      this.recordFailedLogin(rateKey);
+      this.recordFailedLogin(emailKey);
+      if (ipKey) this.recordFailedLogin(ipKey);
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    AuthService.failedAttempts.delete(rateKey);
+    AuthService.failedAttempts.delete(emailKey);
+    if (ipKey) {
+      AuthService.failedAttempts.delete(ipKey);
+    }
 
     const branch = user.branch || BranchName.LOCALES;
     const payload: AuthenticatedUser = {

@@ -3,10 +3,12 @@ import { AuthenticatedUser } from '../../common/enums/role.enum';
 import {
   CreateApiKeyDto,
   CreateWebhookDto,
+  UpdateMercadoPagoSettingsDto,
   UpdateSystemSettingsDto,
 } from './dto/master.dto';
 import { ApiKeysService } from './services/api-keys.service';
 import { AuditService } from './services/audit.service';
+import { MercadoPagoMasterService } from './services/mercadopago-master.service';
 import {
   GlobalSystemSettings,
   SettingsService,
@@ -21,6 +23,7 @@ export { GlobalSystemSettings };
  * - ApiKeysService (Claves API externas con hash SHA-256 y scopes)
  * - WebhooksService (Notificaciones salientes firmadas con HMAC-SHA256)
  * - AuditService (Bitácora inmutable de auditoría)
+ * - MercadoPagoMasterService (Administración y pruebas de credenciales Mercado Pago)
  */
 @Injectable()
 export class MasterService {
@@ -29,6 +32,7 @@ export class MasterService {
     private readonly apiKeysService: ApiKeysService,
     private readonly webhooksService: WebhooksService,
     private readonly auditService: AuditService,
+    private readonly mpMasterService: MercadoPagoMasterService,
   ) {}
 
   getSettings(): Promise<GlobalSystemSettings> {
@@ -37,6 +41,21 @@ export class MasterService {
 
   updateSettings(dto: UpdateSystemSettingsDto, actor: AuthenticatedUser) {
     return this.settingsService.updateSettings(dto, actor);
+  }
+
+  getMercadoPagoSettings(maskSecrets = true) {
+    return this.mpMasterService.getSettings(maskSecrets);
+  }
+
+  updateMercadoPagoSettings(
+    dto: UpdateMercadoPagoSettingsDto,
+    actor: AuthenticatedUser,
+  ) {
+    return this.mpMasterService.updateSettings(dto, actor);
+  }
+
+  testMercadoPagoConnection(actor: AuthenticatedUser, tokenOverride?: string) {
+    return this.mpMasterService.testConnection(actor, tokenOverride);
   }
 
   revokeAllMobileSessions(actor: AuthenticatedUser) {

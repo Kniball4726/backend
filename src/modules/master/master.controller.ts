@@ -20,6 +20,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import {
   CreateApiKeyDto,
   CreateWebhookDto,
+  UpdateMercadoPagoSettingsDto,
   UpdateSystemSettingsDto,
 } from './dto/master.dto';
 import { MasterService } from './master.service';
@@ -51,6 +52,40 @@ export class MasterController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.masterService.updateSettings(dto, user);
+  }
+
+  @Get('integrations/mercadopago')
+  @ApiOperation({
+    summary:
+      'Consultar credenciales y estado de integración de Mercado Pago (enmascarado) [Exclusivo MASTER]',
+  })
+  getMercadoPagoSettings() {
+    return this.masterService.getMercadoPagoSettings(true);
+  }
+
+  @Patch('integrations/mercadopago')
+  @ApiOperation({
+    summary:
+      'Actualizar credenciales de API (Access Token, Public Key, Webhook) de Mercado Pago [Exclusivo MASTER]',
+  })
+  updateMercadoPagoSettings(
+    @Body() dto: UpdateMercadoPagoSettingsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.masterService.updateMercadoPagoSettings(dto, user);
+  }
+
+  @Post('integrations/mercadopago/test-connection')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Probar en vivo la validez del Access Token contra la API oficial de Mercado Pago [Exclusivo MASTER]',
+  })
+  testMercadoPagoConnection(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body('accessToken') tokenOverride?: string,
+  ) {
+    return this.masterService.testMercadoPagoConnection(user, tokenOverride);
   }
 
   @Post('api-keys')

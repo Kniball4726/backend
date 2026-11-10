@@ -3,6 +3,7 @@ import { MasterController } from './master.controller';
 import { MasterService } from './master.service';
 import { ApiKeysService } from './services/api-keys.service';
 import { AuditService } from './services/audit.service';
+import { MercadoPagoMasterService } from './services/mercadopago-master.service';
 import { SettingsService } from './services/settings.service';
 import { WebhooksService } from './services/webhooks.service';
 
@@ -14,6 +15,7 @@ import { WebhooksService } from './services/webhooks.service';
     SettingsService,
     ApiKeysService,
     WebhooksService,
+    MercadoPagoMasterService,
     MasterService,
   ],
   exports: [
@@ -21,6 +23,7 @@ import { WebhooksService } from './services/webhooks.service';
     SettingsService,
     ApiKeysService,
     WebhooksService,
+    MercadoPagoMasterService,
     MasterService,
   ],
 })

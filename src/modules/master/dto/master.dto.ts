@@ -67,3 +67,17 @@ export const CreateWebhookSchema = z.object({
 });
 
 export class CreateWebhookDto extends createZodDto(CreateWebhookSchema) {}
+
+export const UpdateMercadoPagoSettingsSchema = z.object({
+  isEnabled: z.boolean().default(false),
+  isSandbox: z.boolean().default(true),
+  publicKey: z.string().trim().max(250).nullish(),
+  accessToken: z.string().trim().max(350).nullish(),
+  webhookSecret: z.string().trim().max(250).nullish(),
+  posId: z.string().trim().max(100).nullish(),
+  userId: z.string().trim().max(100).nullish(),
+});
+
+export class UpdateMercadoPagoSettingsDto extends createZodDto(
+  UpdateMercadoPagoSettingsSchema,
+) {}
