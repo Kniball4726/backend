@@ -18,4 +18,5 @@ export const COLLECTION_NAMES = {
   SYSTEM_SETTINGS: 'system_settings',
   WEBHOOKS: 'webhooks',
   AUDIT_LOGS: 'audit_logs',
+  COMPANIES: 'companies',
 } as const;
