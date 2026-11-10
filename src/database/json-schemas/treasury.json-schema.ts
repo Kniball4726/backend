@@ -45,6 +45,9 @@ export const cashRegistersJsonSchema: CollectionDefinition = {
         observations: {
           bsonType: ['string', 'null'],
         },
+        closureSummary: {
+          bsonType: ['object', 'null'],
+        },
         openedAt: { bsonType: 'date' },
         closedAt: { bsonType: ['date', 'null'] },
         createdAt: { bsonType: 'date' },

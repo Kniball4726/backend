@@ -91,7 +91,7 @@ export class SalesController {
   @Roles(UserRole.CASHIER, UserRole.ADMIN)
   @ApiOperation({
     summary:
-      'Listar ventas: cada CASHIER ve únicamente sus propias ventas; ADMIN y MASTER ven todas o filtran por vendedor',
+      'Listar ventas: cada CASHIER ve únicamente sus propias ventas; ADMIN y MASTER ven todas o filtran por vendedor. Permite filtrar solo la caja activa.',
   })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({
@@ -99,15 +99,23 @@ export class SalesController {
     required: false,
     description: 'Filtrar por ID de vendedor (solo para ADMIN/MASTER)',
   })
+  @ApiQuery({
+    name: 'activeRegisterOnly',
+    required: false,
+    description:
+      'Filtrar solo ventas de la caja actualmente abierta (por defecto true para el POS del cajero)',
+  })
   findAll(
     @CurrentUser() user: AuthenticatedUser,
     @Query('limit') limit?: string,
     @Query('cashierId') cashierId?: string,
+    @Query('activeRegisterOnly') activeRegisterOnly?: string,
   ) {
     return this.salesService.findAllSales(
       limit ? Number(limit) : 50,
       user,
       cashierId,
+      activeRegisterOnly === 'true',
     );
   }
 

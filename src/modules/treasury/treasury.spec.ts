@@ -7,6 +7,7 @@ describe('Treasury Module (TreasuryService)', () => {
   let treasuryService: TreasuryService;
   let mockRegistersCol: any;
   let mockOperationsCol: any;
+  let mockSalesCol: any;
 
   beforeEach(() => {
     mockRegistersCol = {
@@ -17,15 +18,19 @@ describe('Treasury Module (TreasuryService)', () => {
       aggregate: jest.fn(),
     };
     mockOperationsCol = {
-      find: jest.fn(),
+      find: jest.fn().mockReturnValue({ toArray: jest.fn().mockResolvedValue([]) }),
       findOne: jest.fn(),
       insertOne: jest.fn(),
+    };
+    mockSalesCol = {
+      find: jest.fn().mockReturnValue({ toArray: jest.fn().mockResolvedValue([]) }),
     };
 
     const mockDb = {
       collection: jest.fn().mockImplementation((name: string) => {
         if (name === 'cash_registers') return mockRegistersCol;
         if (name === 'cash_operations') return mockOperationsCol;
+        if (name === 'sales') return mockSalesCol;
         return mockRegistersCol;
       }),
     };
@@ -176,6 +181,70 @@ describe('Treasury Module (TreasuryService)', () => {
 
       const closed = await treasuryService.closeRegister(regId, adminUser);
       expect(closed.status).toBe('CERRADA');
+    });
+
+    it('debe calcular el resumen de totales por forma de pago al consultar o cerrar la caja', async () => {
+      const regId = new Types.ObjectId().toString();
+      const cashierSub = new Types.ObjectId().toString();
+      const user = {
+        sub: cashierSub,
+        email: 'cajero@justimobile.com',
+        fullName: 'Daniel Cajero',
+        role: UserRole.CASHIER,
+        branch: BranchName.LOCALES,
+      };
+
+      const now = new Date();
+      mockRegistersCol.findOne.mockResolvedValueOnce({
+        _id: new Types.ObjectId(regId),
+        userId: new Types.ObjectId(cashierSub),
+        userFullName: 'Daniel Cajero',
+        branch: BranchName.LOCALES,
+        boxType: 'Ventas Sucursal',
+        status: 'ABIERTA',
+        initialBalanceCents: 5000,
+        openedAt: now,
+      });
+
+      // Ventas simuladas con diferentes métodos de pago
+      mockSalesCol.find.mockReturnValueOnce({
+        toArray: jest.fn().mockResolvedValue([
+          {
+            totalCents: 10000,
+            payments: [{ method: 'CASH', amountCents: 10000, reference: '' }],
+          },
+          {
+            totalCents: 15000,
+            payments: [{ method: 'CARD', amountCents: 15000, reference: 'VISA 1234' }],
+          },
+          {
+            totalCents: 8000,
+            payments: [{ method: 'TRANSFER', amountCents: 8000, reference: 'QR MERCADO PAGO #999' }],
+          },
+          {
+            totalCents: 4500,
+            payments: [{ method: 'TRANSFER', amountCents: 4500, reference: 'QR SPORT CLUB #444' }],
+          },
+          {
+            totalCents: 2000,
+            payments: [{ method: 'CASH', amountCents: 2000, reference: 'CANJE PRODUCTO' }],
+          },
+        ]),
+      });
+
+      const summary = await treasuryService.getRegisterSummary(regId, user, 150);
+
+      expect(summary.totalSalesCount).toBe(5);
+      expect(summary.totalSalesCents).toBe(39500);
+      expect(summary.totalsByMethod.cashCents).toBe(10000);
+      expect(summary.totalsByMethod.cardCents).toBe(15000);
+      expect(summary.totalsByMethod.qrMpCents).toBe(8000);
+      expect(summary.totalsByMethod.qrScCents).toBe(4500);
+      expect(summary.totalsByMethod.canjesCents).toBe(2000);
+      expect(summary.initialBalanceCents).toBe(5000);
+      expect(summary.expectedCashCents).toBe(15000); // 5000 inicial + 10000 efectivo
+      expect(summary.declaredCashCents).toBe(15000); // 150 * 100
+      expect(summary.differenceCents).toBe(0);
     });
   });
 });

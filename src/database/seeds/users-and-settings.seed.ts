@@ -134,7 +134,7 @@ export async function seedUsersAndMasterSettings(
     '[Seed] Usuarios verificados: glrd4726ml@gmail.com (MASTER), admin@justimobile.com (ADMIN), gregory@justimobile.com (CRM), daniel@justimobile.com (CASHIER)',
   );
 
-  // Semilla de Caja inicial abierta en sucursal LOCALES si no existe ninguna
+  // Semilla de Caja inicial solo en el primer aprovisionamiento si la colección está vacía
   const registersCol = db.collection(COLLECTION_NAMES.CASH_REGISTERS);
   await registersCol.updateMany(
     { branch: { $nin: ['LOCALES', 'CARRERAS'] } },
@@ -147,14 +147,14 @@ export async function seedUsersAndMasterSettings(
       { $set: { branch: 'LOCALES' } },
     );
 
-  const existingOpenReg = await registersCol.findOne({
-    branch: 'LOCALES',
-    status: 'ABIERTA',
-  });
-  if (!existingOpenReg) {
+  const danielDoc = await usersCol.findOne({ email: 'daniel@justimobile.com' });
+  const danielUserId = danielDoc ? danielDoc._id : new ObjectId();
+
+  const totalRegisters = await registersCol.countDocuments();
+  if (totalRegisters === 0) {
     await registersCol.insertOne({
       _id: new ObjectId(),
-      userId: crmUserId,
+      userId: danielUserId,
       userFullName: 'Daniel (Cajero)',
       branch: 'LOCALES',
       boxType: 'Ventas Sucursal',
@@ -167,7 +167,7 @@ export async function seedUsersAndMasterSettings(
       createdAt: now,
       updatedAt: now,
     });
-    logger.log('[Seed] Caja "Ventas Sucursal" abierta en sucursal LOCALES.');
+    logger.log('[Seed] Caja inicial "Ventas Sucursal" creada en sucursal LOCALES.');
   }
 
   return { crmUserId };

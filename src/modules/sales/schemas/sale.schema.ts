@@ -74,6 +74,9 @@ export class Sale {
   @Prop({ type: Types.ObjectId, required: true })
   cashierId: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, default: null, ref: 'cash_registers' })
+  registerId: Types.ObjectId | null;
+
   @Prop({ type: Types.ObjectId, default: null })
   customerId: Types.ObjectId | null;
 

@@ -33,3 +33,10 @@ export const CreateCashOperationSchema = z.object({
 export class CreateCashOperationDto extends createZodDto(
   CreateCashOperationSchema,
 ) {}
+
+export const CloseRegisterSchema = z.object({
+  declaredCash: z.number().min(0).optional(),
+  observations: z.string().trim().max(500).optional().default(''),
+});
+
+export class CloseRegisterDto extends createZodDto(CloseRegisterSchema) {}

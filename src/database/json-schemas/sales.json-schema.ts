@@ -30,6 +30,7 @@ export const salesJsonSchema: CollectionDefinition = {
             'UUIDv4 único enviado por el cliente móvil para evitar cobros duplicados',
         },
         cashierId: { bsonType: 'objectId' },
+        registerId: { bsonType: ['objectId', 'null'] },
         customerId: { bsonType: ['objectId', 'null'] },
         customerSnapshot: {
           bsonType: ['object', 'null'],

@@ -20,6 +20,7 @@ import { AuthenticatedUser, UserRole } from '../../common/enums/role.enum';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import {
+  CloseRegisterDto,
   CreateCashOperationDto,
   OpenRegisterDto,
 } from './dto/treasury.dto';
@@ -55,10 +56,10 @@ export class TreasuryController {
   }
 
   @Post('registers/open')
-  @Roles(UserRole.CASHIER)
+  @Roles(UserRole.CASHIER, UserRole.ADMIN)
   @ApiOperation({
     summary:
-      'Abrir nueva caja propia ("Ventas Sucursal" individual por vendedor o "Caja Consolidada" de sucursal) [Solo CASHIER y MASTER]',
+      'Abrir nueva caja ("Ventas Sucursal" individual por vendedor o "Caja Consolidada" por ADMIN/MASTER) [CASHIER, ADMIN y MASTER]',
   })
   openRegister(
     @Body() dto: OpenRegisterDto,
@@ -67,17 +68,36 @@ export class TreasuryController {
     return this.treasuryService.openRegister(dto, user);
   }
 
-  @Patch('registers/:id/close')
-  @Roles(UserRole.CASHIER)
+  @Get('registers/:id/summary')
+  @Roles(UserRole.CASHIER, UserRole.ADMIN)
   @ApiOperation({
     summary:
-      'Cerrar caja abierta (cada vendedor solo puede cerrar su propia caja; MASTER puede cerrar cualquiera) [Solo CASHIER y MASTER]',
+      'Obtener arqueo y resumen de ventas por método de pago de una caja abierta o cerrada',
+  })
+  getRegisterSummary(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('declaredCash') declaredCash?: string,
+  ) {
+    return this.treasuryService.getRegisterSummary(
+      id,
+      user,
+      declaredCash ? Number(declaredCash) : undefined,
+    );
+  }
+
+  @Patch('registers/:id/close')
+  @Roles(UserRole.CASHIER, UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Cerrar caja abierta con arqueo y resumen por forma de pago (cada vendedor solo puede cerrar su propia caja; ADMIN y MASTER pueden cerrar cualquiera) [CASHIER, ADMIN y MASTER]',
   })
   closeRegister(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
+    @Body() dto?: CloseRegisterDto,
   ) {
-    return this.treasuryService.closeRegister(id, user);
+    return this.treasuryService.closeRegister(id, user, dto);
   }
 
   @Get('operations')
