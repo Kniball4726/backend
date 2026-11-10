@@ -81,3 +81,27 @@ export const UpdateMercadoPagoSettingsSchema = z.object({
 export class UpdateMercadoPagoSettingsDto extends createZodDto(
   UpdateMercadoPagoSettingsSchema,
 ) {}
+
+export const UpdateAfipSettingsSchema = z.object({
+  isEnabled: z.boolean().default(false).optional(),
+  isProduction: z.boolean().default(false).optional(),
+  cuit: z.string().trim().max(20).nullish(),
+  puntoVenta: z.number().int().min(1).max(99999).nullish(),
+  cert: z.string().trim().nullish(),
+  privateKey: z.string().trim().nullish(),
+  defaultConcepto: z.number().int().min(1).max(3).default(1).optional(),
+  defaultCbteTipo: z.number().int().min(1).max(99).default(6).optional(),
+});
+
+export class UpdateAfipSettingsDto extends createZodDto(
+  UpdateAfipSettingsSchema,
+) {}
+
+export const TestAfipConnectionSchema = z.object({
+  cuitOverride: z.string().trim().max(20).nullish(),
+  isProductionOverride: z.boolean().optional(),
+});
+
+export class TestAfipConnectionDto extends createZodDto(
+  TestAfipConnectionSchema,
+) {}

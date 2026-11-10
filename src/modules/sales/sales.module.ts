@@ -7,6 +7,7 @@ import { MercadoPagoWebhookController } from './mercadopago-webhook.controller';
 import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
 import { Sale, SaleSchema } from './schemas/sale.schema';
+import { AfipInvoiceService } from '../afip/services/afip-invoice.service';
 import { MercadoPagoPosService } from './services/mercadopago-pos.service';
 import { SalesBiService } from './services/sales-bi.service';
 import { SalesPricingService } from './services/sales-pricing.service';
@@ -26,6 +27,7 @@ import { SalesTransactionService } from './services/sales-transaction.service';
     SalesTransactionService,
     SalesQueryService,
     MercadoPagoPosService,
+    AfipInvoiceService,
     SalesBiService,
     SalesService,
   ],
@@ -34,6 +36,7 @@ import { SalesTransactionService } from './services/sales-transaction.service';
     SalesTransactionService,
     SalesQueryService,
     MercadoPagoPosService,
+    AfipInvoiceService,
     SalesBiService,
     SalesService,
   ],

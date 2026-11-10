@@ -20,6 +20,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import {
   CreateApiKeyDto,
   CreateWebhookDto,
+  TestAfipConnectionDto,
+  UpdateAfipSettingsDto,
   UpdateMercadoPagoSettingsDto,
   UpdateSystemSettingsDto,
 } from './dto/master.dto';
@@ -86,6 +88,40 @@ export class MasterController {
     @Body('accessToken') tokenOverride?: string,
   ) {
     return this.masterService.testMercadoPagoConnection(user, tokenOverride);
+  }
+
+  @Get('integrations/afip')
+  @ApiOperation({
+    summary:
+      'Consultar configuración, certificados y estado de facturación electrónica AFIP / ARCA (enmascarado) [Exclusivo MASTER]',
+  })
+  getAfipSettings() {
+    return this.masterService.getAfipSettings(true);
+  }
+
+  @Patch('integrations/afip')
+  @ApiOperation({
+    summary:
+      'Actualizar configuración, CUIT, punto de venta y certificados de AFIP / ARCA [Exclusivo MASTER]',
+  })
+  updateAfipSettings(
+    @Body() dto: UpdateAfipSettingsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.masterService.updateAfipSettings(dto, user);
+  }
+
+  @Post('integrations/afip/test-connection')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Probar en vivo la comunicación con servidores de AFIP / ARCA (WSAA / WSFE FEDummy) [Exclusivo MASTER]',
+  })
+  testAfipConnection(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto?: TestAfipConnectionDto,
+  ) {
+    return this.masterService.testAfipConnection(user, dto);
   }
 
   @Post('api-keys')

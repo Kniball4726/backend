@@ -5,6 +5,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DatabaseModule } from './database/database.module';
 import { HealthController } from './health.controller';
+import { AfipModule } from './modules/afip/afip.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { CrmModule } from './modules/crm/crm.module';
@@ -21,6 +22,7 @@ import { UsersModule } from './modules/users/users.module';
       envFilePath: [process.env.ENV_FILE || '.env', '.env'],
     }),
     DatabaseModule,
+    AfipModule,
     MasterModule,
     UsersModule,
     AuthModule,

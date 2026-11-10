@@ -1,6 +1,9 @@
 import { Types } from 'mongoose';
 import { UserRole } from '../../common/enums/role.enum';
+import { AfipMasterService } from './services/afip-master.service';
 import { ApiKeysService } from './services/api-keys.service';
+import { MercadoPagoMasterService } from './services/mercadopago-master.service';
+import { SettingsService } from './services/settings.service';
 
 describe('Master Module (ApiKeysService & Security)', () => {
   let apiKeysService: ApiKeysService;
@@ -173,6 +176,133 @@ describe('Master Module (ApiKeysService & Security)', () => {
           actor,
         }),
       );
+    });
+  });
+
+  describe('Facturación Electrónica AFIP / ARCA Exclusiva de MASTER', () => {
+    let afipMasterService: AfipMasterService;
+    let mockSettingsService: any;
+
+    beforeEach(() => {
+      mockSettingsService = {
+        getSettings: jest.fn().mockResolvedValue({
+          key: 'GLOBAL_CONFIG',
+          afip: {
+            isEnabled: true,
+            isProduction: false,
+            cuit: '20301234563',
+            puntoVenta: 1,
+            cert: '-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----',
+            privateKey: '-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----',
+            defaultConcepto: 1,
+            defaultCbteTipo: 6,
+            updatedAt: new Date(),
+          },
+        }),
+      };
+
+      const mockSettingsCol = {
+        updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+      };
+
+      const mockDb = {
+        collection: jest.fn().mockReturnValue(mockSettingsCol),
+      };
+
+      const mockConn = { db: mockDb };
+
+      afipMasterService = new AfipMasterService(
+        mockConn as any,
+        mockSettingsService,
+        mockAuditService,
+      );
+    });
+
+    it('debe validar algoritmo de CUIT argentino (módulo 11)', () => {
+      expect(afipMasterService.validateCuit('20301234563')).toBe(true);
+      expect(afipMasterService.validateCuit('20-30123456-3')).toBe(true);
+      expect(afipMasterService.validateCuit('20301234569')).toBe(false); // Dígito verificador erróneo
+      expect(afipMasterService.validateCuit('123')).toBe(false); // Longitud errónea
+    });
+
+    it('debe enmascarar la clave privada y certificado bajo política Zero-Knowledge al consultar getSettings', async () => {
+      const res = await afipMasterService.getSettings(true);
+      expect(res.isEnabled).toBe(true);
+      expect(res.isProduction).toBe(false);
+      expect(res.cuit).toBe('20301234563');
+      expect(res.puntoVenta).toBe(1);
+      expect(res.hasCert).toBe(true);
+      expect(res.hasPrivateKey).toBe(true);
+      expect(res.privateKeyMasked).toBe('••••••••••••••••');
+      expect(res.certPreview).toContain('Certificado X.509');
+    });
+
+    it('debe rechazar la actualización si el CUIT no cumple con el algoritmo oficial de AFIP', async () => {
+      const actor = {
+        sub: new Types.ObjectId().toString(),
+        email: 'master@justimobile.com',
+        fullName: 'Master User',
+        role: UserRole.MASTER,
+      };
+
+      await expect(
+        afipMasterService.updateSettings(
+          {
+            isEnabled: true,
+            isProduction: false,
+            cuit: '20301234569', // Inválido
+          },
+          actor,
+        ),
+      ).rejects.toThrow('El CUIT ingresado no es válido');
+    });
+
+    it('debe actualizar credenciales AFIP, conservar clave privada enmascarada y registrar auditoría inmutable', async () => {
+      const actor = {
+        sub: new Types.ObjectId().toString(),
+        email: 'master@justimobile.com',
+        fullName: 'Master User',
+        role: UserRole.MASTER,
+      };
+
+      const res = await afipMasterService.updateSettings(
+        {
+          isEnabled: true,
+          isProduction: true,
+          cuit: '20-30123456-3',
+          puntoVenta: 2,
+          privateKey: '••••••••••••••••', // Enmascarada -> debe preservarse la original
+          defaultConcepto: 1,
+          defaultCbteTipo: 1,
+        },
+        actor,
+      );
+
+      expect(mockAuditService.recordAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'MASTER_AFIP_SETTINGS_UPDATED',
+          actor,
+          targetId: 'GLOBAL_CONFIG:afip',
+        }),
+      );
+    });
+
+    it('debe devolver estructura diagnóstica completa en testConnection', async () => {
+      const actor = {
+        sub: new Types.ObjectId().toString(),
+        email: 'master@justimobile.com',
+        fullName: 'Master User',
+        role: UserRole.MASTER,
+      };
+
+      const result = await afipMasterService.testConnection(actor, {
+        cuitOverride: '20301234563',
+      });
+
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('environment');
+      expect(result).toHaveProperty('servers');
+      expect(result.diagnostics?.cuitValid).toBe(true);
     });
   });
 });

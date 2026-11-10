@@ -17,6 +17,21 @@ export interface MercadoPagoSettings {
   updatedAt: Date | null;
 }
 
+export interface AfipSettings {
+  isEnabled: boolean;
+  isProduction: boolean;
+  cuit: string | null;
+  puntoVenta: number | null;
+  cert: string | null;
+  privateKey: string | null;
+  wsaaToken?: string | null;
+  wsaaSign?: string | null;
+  wsaaExpiresAt?: Date | null;
+  defaultConcepto: number; // 1 = Productos, 2 = Servicios, 3 = Productos y Servicios
+  defaultCbteTipo: number; // 6 = Factura B, 1 = Factura A, 11 = Factura C
+  updatedAt: Date | null;
+}
+
 export interface GlobalSystemSettings {
   key: 'GLOBAL_CONFIG';
   businessName: string;
@@ -29,6 +44,7 @@ export interface GlobalSystemSettings {
     reason: string | null;
   };
   mercadoPago?: MercadoPagoSettings | null;
+  afip?: AfipSettings | null;
   lastKillSwitchAt?: Date | null;
   updatedAt: Date;
 }

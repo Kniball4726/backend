@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { MasterController } from './master.controller';
 import { MasterService } from './master.service';
+import { AfipMasterService } from './services/afip-master.service';
 import { ApiKeysService } from './services/api-keys.service';
 import { AuditService } from './services/audit.service';
 import { MercadoPagoMasterService } from './services/mercadopago-master.service';
@@ -16,6 +17,7 @@ import { WebhooksService } from './services/webhooks.service';
     ApiKeysService,
     WebhooksService,
     MercadoPagoMasterService,
+    AfipMasterService,
     MasterService,
   ],
   exports: [
@@ -24,6 +26,7 @@ import { WebhooksService } from './services/webhooks.service';
     ApiKeysService,
     WebhooksService,
     MercadoPagoMasterService,
+    AfipMasterService,
     MasterService,
   ],
 })

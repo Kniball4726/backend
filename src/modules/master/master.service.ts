@@ -3,9 +3,12 @@ import { AuthenticatedUser } from '../../common/enums/role.enum';
 import {
   CreateApiKeyDto,
   CreateWebhookDto,
+  TestAfipConnectionDto,
+  UpdateAfipSettingsDto,
   UpdateMercadoPagoSettingsDto,
   UpdateSystemSettingsDto,
 } from './dto/master.dto';
+import { AfipMasterService } from './services/afip-master.service';
 import { ApiKeysService } from './services/api-keys.service';
 import { AuditService } from './services/audit.service';
 import { MercadoPagoMasterService } from './services/mercadopago-master.service';
@@ -24,6 +27,7 @@ export { GlobalSystemSettings };
  * - WebhooksService (Notificaciones salientes firmadas con HMAC-SHA256)
  * - AuditService (Bitácora inmutable de auditoría)
  * - MercadoPagoMasterService (Administración y pruebas de credenciales Mercado Pago)
+ * - AfipMasterService (Facturación Electrónica AFIP / ARCA y pruebas de conexión WSFE)
  */
 @Injectable()
 export class MasterService {
@@ -33,6 +37,7 @@ export class MasterService {
     private readonly webhooksService: WebhooksService,
     private readonly auditService: AuditService,
     private readonly mpMasterService: MercadoPagoMasterService,
+    private readonly afipMasterService: AfipMasterService,
   ) {}
 
   getSettings(): Promise<GlobalSystemSettings> {
@@ -56,6 +61,21 @@ export class MasterService {
 
   testMercadoPagoConnection(actor: AuthenticatedUser, tokenOverride?: string) {
     return this.mpMasterService.testConnection(actor, tokenOverride);
+  }
+
+  getAfipSettings(maskSecrets = true) {
+    return this.afipMasterService.getSettings(maskSecrets);
+  }
+
+  updateAfipSettings(dto: UpdateAfipSettingsDto, actor: AuthenticatedUser) {
+    return this.afipMasterService.updateSettings(dto, actor);
+  }
+
+  testAfipConnection(actor: AuthenticatedUser, dto?: TestAfipConnectionDto) {
+    return this.afipMasterService.testConnection(actor, {
+      cuitOverride: dto?.cuitOverride ?? undefined,
+      isProductionOverride: dto?.isProductionOverride,
+    });
   }
 
   revokeAllMobileSessions(actor: AuthenticatedUser) {

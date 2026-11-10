@@ -59,6 +59,39 @@ export class SalePayment {
 
 export const SalePaymentSchema = SchemaFactory.createForClass(SalePayment);
 
+@Schema({ _id: false })
+export class SaleAfipInvoice {
+  @Prop({ required: true })
+  cae: string;
+
+  @Prop({ required: true })
+  caeVto: string;
+
+  @Prop({ required: true })
+  cbteTipo: number;
+
+  @Prop({ required: true })
+  puntoVenta: number;
+
+  @Prop({ required: true })
+  cbteNumero: number;
+
+  @Prop({ required: true })
+  docTipo: number;
+
+  @Prop({ required: true })
+  docNro: string;
+
+  @Prop({ type: String, default: null })
+  qrData: string | null;
+
+  @Prop({ type: Date, default: Date.now })
+  emitidoAt: Date;
+}
+
+export const SaleAfipInvoiceSchema =
+  SchemaFactory.createForClass(SaleAfipInvoice);
+
 @Schema({
   collection: COLLECTION_NAMES.SALES,
   timestamps: true,
@@ -110,6 +143,9 @@ export class Sale {
     default: 'COMPLETED',
   })
   status: 'COMPLETED' | 'CANCELLED';
+
+  @Prop({ type: SaleAfipInvoiceSchema, default: null })
+  afipInvoice: SaleAfipInvoice | null;
 
   @Prop({ type: Date, default: null })
   deviceTimestamp: Date | null;
